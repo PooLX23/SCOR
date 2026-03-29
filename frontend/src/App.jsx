@@ -23,25 +23,49 @@ export default function App() {
 
   if (!account) {
     return (
-      <main>
-        <h1>SCOR — logowanie pracownika</h1>
-        <button onClick={login}>Zaloguj przez Entra ID</button>
+      <main className="page page--centered">
+        <section className="premium-card premium-card--auth">
+          <div className="brand-bar" />
+          <p className="eyebrow">SCOR • SIXT</p>
+          <h1>Panel składania wniosków</h1>
+          <p className="muted">
+            Zaloguj się kontem służbowym Entra ID, aby złożyć nowy wniosek klienta.
+          </p>
+          <button className="btn btn--primary" onClick={login}>Zaloguj przez Entra ID</button>
+        </section>
       </main>
     )
   }
 
   return (
-    <main>
-      <h1>Nowy wniosek</h1>
-      <p>Zalogowano jako: {account.username}</p>
-      <label>
-        Typ formularza:
-        <select value={formType} onChange={(e) => setFormType(e.target.value)}>
-          <option value="company">Spółka</option>
-          <option value="individual">Osoba fizyczna / JDG</option>
-        </select>
-      </label>
-      <TokenForm type={formType} tokenPromise={tokenPromise} />
+    <main className="page">
+      <section className="premium-card premium-card--header">
+        <div className="brand-bar" />
+        <p className="eyebrow">SCOR • SIXT</p>
+        <h1>Nowy wniosek scoringowy</h1>
+        <p className="muted">Zalogowano jako: <strong>{account.username}</strong></p>
+
+        <div className="type-switcher">
+          <button
+            className={`btn ${formType === 'company' ? 'btn--primary' : 'btn--ghost'}`}
+            onClick={() => setFormType('company')}
+            type="button"
+          >
+            Spółka
+          </button>
+          <button
+            className={`btn ${formType === 'individual' ? 'btn--primary' : 'btn--ghost'}`}
+            onClick={() => setFormType('individual')}
+            type="button"
+          >
+            Osoba fizyczna / JDG
+          </button>
+        </div>
+      </section>
+
+      <section className="premium-card">
+        <TokenForm type={formType} tokenPromise={tokenPromise} />
+      </section>
     </main>
   )
 }
@@ -53,6 +77,6 @@ function TokenForm({ type, tokenPromise }) {
     tokenPromise().then(setToken).catch(() => setToken(null))
   }, [tokenPromise])
 
-  if (!token) return <p>Pobieranie tokenu...</p>
+  if (!token) return <p className="loading">Pobieranie tokenu...</p>
   return <ApplicationForm type={type} token={token} />
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { submitApplication } from '../services/api'
 
 const baseDefaults = {
@@ -23,6 +23,16 @@ export default function ApplicationForm({ type, token }) {
   const [files, setFiles] = useState([])
   const [status, setStatus] = useState('')
 
+  useEffect(() => {
+    setForm(
+      type === 'company'
+        ? { ...baseDefaults, company_name: '', krs: '' }
+        : { ...baseDefaults, customer_name: '', pesel: '', document_number: '' }
+    )
+    setFiles([])
+    setStatus('')
+  }, [type])
+
   const onChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
 
   const onSubmit = async (e) => {
@@ -45,41 +55,68 @@ export default function ApplicationForm({ type, token }) {
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      {type === 'company' ? (
-        <>
-          <input required name="company_name" placeholder="Nazwa spółki" onChange={onChange} />
-          <input required name="krs" placeholder="KRS" onChange={onChange} />
-        </>
-      ) : (
-        <>
-          <input required name="customer_name" placeholder="Nazwa klienta" onChange={onChange} />
-          <input required name="pesel" placeholder="PESEL" onChange={onChange} />
-          <input required name="document_number" placeholder="Numer dokumentu" onChange={onChange} />
-        </>
-      )}
+    <form onSubmit={onSubmit} className="application-form">
+      <h2>{type === 'company' ? 'Formularz spółki' : 'Formularz osoby fizycznej / JDG'}</h2>
 
-      <input required name="nip" placeholder="NIP" onChange={onChange} />
-      <select required name="business_line" onChange={onChange} defaultValue="ST">
-        {['ST', 'LT', 'AA', 'CFM', 'LOP'].map((v) => (
-          <option value={v} key={v}>{v}</option>
-        ))}
-      </select>
-      <input required name="car_model" placeholder="Samochód" onChange={onChange} />
-      <input required type="number" step="0.01" name="rent_amount" placeholder="Wysokość czynszu" onChange={onChange} />
-      <input required type="number" step="0.01" name="deposit_amount" placeholder="Kwota depozytu" onChange={onChange} />
-      <input required type="number" step="0.01" name="vehicle_value" placeholder="Wartość pojazdu" onChange={onChange} />
-      <input required type="number" step="0.01" name="initial_fee" placeholder="Opłata wstępna" onChange={onChange} />
-      <input required name="car_group" placeholder="Grupa samochodu" onChange={onChange} />
-      <select required name="car_segment" onChange={onChange} defaultValue="standard">
-        <option value="standard">standard</option>
-        <option value="premium">premium</option>
-      </select>
-      <input required type="number" name="rental_period_months" placeholder="Okres wynajmu (miesiące)" onChange={onChange} />
+      <div className="form-grid">
+        {type === 'company' ? (
+          <>
+            <Field name="company_name" placeholder="Nazwa spółki" onChange={onChange} />
+            <Field name="krs" placeholder="KRS" onChange={onChange} />
+          </>
+        ) : (
+          <>
+            <Field name="customer_name" placeholder="Nazwa klienta" onChange={onChange} />
+            <Field name="pesel" placeholder="PESEL" onChange={onChange} />
+            <Field name="document_number" placeholder="Numer dokumentu" onChange={onChange} />
+          </>
+        )}
 
-      <input required type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
-      <button type="submit">Zapisz wniosek</button>
-      <p>{status}</p>
+        <Field name="nip" placeholder="NIP" onChange={onChange} />
+
+        <label>
+          Linia biznesowa
+          <select required name="business_line" onChange={onChange} defaultValue="ST">
+            {['ST', 'LT', 'AA', 'CFM', 'LOP'].map((v) => (
+              <option value={v} key={v}>{v}</option>
+            ))}
+          </select>
+        </label>
+
+        <Field name="car_model" placeholder="Samochód" onChange={onChange} />
+        <Field name="rent_amount" type="number" step="0.01" placeholder="Wysokość czynszu" onChange={onChange} />
+        <Field name="deposit_amount" type="number" step="0.01" placeholder="Kwota depozytu" onChange={onChange} />
+        <Field name="vehicle_value" type="number" step="0.01" placeholder="Wartość pojazdu" onChange={onChange} />
+        <Field name="initial_fee" type="number" step="0.01" placeholder="Opłata wstępna" onChange={onChange} />
+        <Field name="car_group" placeholder="Grupa samochodu" onChange={onChange} />
+
+        <label>
+          Segment samochodu
+          <select required name="car_segment" onChange={onChange} defaultValue="standard">
+            <option value="standard">standard</option>
+            <option value="premium">premium</option>
+          </select>
+        </label>
+
+        <Field name="rental_period_months" type="number" placeholder="Okres wynajmu (miesiące)" onChange={onChange} />
+      </div>
+
+      <label className="file-input">
+        Załączniki (wiele plików)
+        <input required type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+      </label>
+
+      <button className="btn btn--primary" type="submit">Zapisz wniosek</button>
+      {status && <p className="status">{status}</p>}
     </form>
+  )
+}
+
+function Field({ name, placeholder, type = 'text', step, onChange }) {
+  return (
+    <label>
+      {placeholder}
+      <input required name={name} type={type} step={step} placeholder={placeholder} onChange={onChange} />
+    </label>
   )
 }
