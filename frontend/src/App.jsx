@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMsal } from '@azure/msal-react'
 import { loginRequest } from './auth/msal'
 import ApplicationForm from './components/ApplicationForm'
+import { env } from './config/env'
 
 export default function App() {
   const { instance, accounts } = useMsal()
@@ -21,10 +22,14 @@ export default function App() {
     await instance.loginRedirect(loginRequest)
   }
 
+  const loginBgStyle = env.loginBackgroundUrl
+    ? { '--login-bg': `url(${env.loginBackgroundUrl})` }
+    : {}
+
   if (!account) {
     return (
-      <main className="page page--centered">
-        <section className="premium-card premium-card--auth">
+      <main className="page page--centered page--login" style={loginBgStyle}>
+        <section className="glass-card glass-card--auth">
           <div className="brand-bar" />
           <p className="eyebrow">SCOR • SIXT</p>
           <h1>Panel składania wniosków</h1>
@@ -38,12 +43,17 @@ export default function App() {
   }
 
   return (
-    <main className="page">
-      <section className="premium-card premium-card--header">
-        <div className="brand-bar" />
-        <p className="eyebrow">SCOR • SIXT</p>
-        <h1>Nowy wniosek scoringowy</h1>
-        <p className="muted">Zalogowano jako: <strong>{account.username}</strong></p>
+    <main className="page page--app">
+      <section className="glass-card glass-card--header">
+        <div className="header-top">
+          <div>
+            <div className="brand-bar" />
+            <p className="eyebrow">SCOR • SIXT</p>
+            <h1>Nowy wniosek scoringowy</h1>
+            <p className="muted">Zalogowano jako: <strong>{account.username}</strong></p>
+          </div>
+          {env.appLogoUrl && <img className="app-logo" src={env.appLogoUrl} alt="Logo aplikacji" />}
+        </div>
 
         <div className="type-switcher">
           <button
@@ -63,7 +73,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="premium-card">
+      <section className="glass-card">
         <TokenForm type={formType} tokenPromise={tokenPromise} />
       </section>
     </main>
