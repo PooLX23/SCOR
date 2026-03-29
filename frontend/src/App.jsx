@@ -31,7 +31,7 @@ export default function App() {
       <main className="page page--centered page--login" style={loginBgStyle}>
         <section className="glass-card glass-card--auth">
           <div className="brand-bar" />
-          <p className="eyebrow">SCOR • SIXT</p>
+          <p className="eyebrow">SCORING • SIXT</p>
           <h1>Panel składania wniosków</h1>
           <p className="muted">
             Zaloguj się kontem służbowym Entra ID, aby złożyć nowy wniosek klienta.
@@ -48,7 +48,7 @@ export default function App() {
         <div className="header-top">
           <div>
             <div className="brand-bar" />
-            <p className="eyebrow">SCOR • SIXT</p>
+            <p className="eyebrow">SCORING • SIXT</p>
             <h1>Nowy wniosek scoringowy</h1>
             <p className="muted">Zalogowano jako: <strong>{account.username}</strong></p>
           </div>
