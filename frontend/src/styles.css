@@ -1,0 +1,5 @@
+body { font-family: Arial, sans-serif; margin: 0; background: #f7f7f8; }
+main { max-width: 840px; margin: 20px auto; background: white; padding: 24px; border-radius: 10px; }
+form { display: grid; gap: 10px; }
+input, select, button { padding: 10px; font-size: 14px; }
+button { cursor: pointer; }
