@@ -214,6 +214,10 @@ select:focus {
   .app-logo {
     width: 130px;
   }
+
+  .header-actions {
+    align-items: flex-start;
+  }
 }
 
 
@@ -262,4 +266,17 @@ select:focus {
   height: 16px;
   accent-color: var(--sixt-orange);
   appearance: auto;
+}
+
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.header-actions .btn {
+  width: auto;
+  min-width: 120px;
 }
