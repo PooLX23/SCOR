@@ -5,7 +5,8 @@ Monorepo dla aplikacji scoringowej (FastAPI + React + Entra ID).
 ## Backend
 
 1. Skopiuj `backend/.env.example` do `backend/.env` i uzupełnij wartości.
-2. Uruchom:
+2. Jeśli chcesz przebudować strukturę tabel na starcie (utrata danych), ustaw `DB_REBUILD_ON_START=true`.
+3. Uruchom:
 
 ```bash
 cd backend

@@ -19,6 +19,8 @@ app.add_middleware(
 @app.on_event('startup')
 def startup() -> None:
     ensure_schema()
+    if settings.db_rebuild_on_start:
+        Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 

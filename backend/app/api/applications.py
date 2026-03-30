@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models.application import ApplicantType, Application
+from app.models.application import ApplicantType, Application, ApplicationVehicleItem
 from app.schemas.application import CompanyFormCreate, IndividualFormCreate
 from app.services.auth import bearer_scheme, validate_entra_token
 from app.services.sharepoint import SharePointService
@@ -23,6 +23,35 @@ def _parse_form_payload(model_cls: type[CompanyFormCreate | IndividualFormCreate
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
 
+def _build_vehicle_items(application_id: int, vehicles: list) -> list[ApplicationVehicleItem]:
+    return [
+        ApplicationVehicleItem(
+            application_id=application_id,
+            business_line=item.business_line,
+            car_make=item.car_make,
+            car_model=item.car_model,
+            rent_amount=item.rent_amount,
+            deposit_amount=item.deposit_amount,
+            vehicle_value=item.vehicle_value,
+            initial_fee=item.initial_fee,
+            car_group=item.car_group,
+            car_class=item.car_class,
+            rental_period_months=item.rental_period_months,
+        )
+        for item in vehicles
+    ]
+
+
+def _calculate_totals(vehicles: list) -> dict[str, float | int]:
+    return {
+        'total_rent_amount': sum(v.rent_amount for v in vehicles),
+        'total_deposit_amount': sum(v.deposit_amount for v in vehicles),
+        'total_vehicle_value': sum(v.vehicle_value for v in vehicles),
+        'total_initial_fee': sum(v.initial_fee for v in vehicles),
+        'total_vehicle_count': len(vehicles),
+    }
+
+
 @router.post('/company')
 async def create_company_application(
     payload: str = Form(..., description='JSON CompanyFormCreate'),
@@ -32,30 +61,26 @@ async def create_company_application(
 ):
     user = validate_entra_token(credentials)
     data = _parse_form_payload(CompanyFormCreate, payload)
+    totals = _calculate_totals(data.vehicles)
+
     application = Application(
         applicant_type=ApplicantType.company,
         company_name=data.company_name,
         nip=data.nip,
         krs=data.krs,
-        business_line=data.business_line,
-        car_model=data.car_model,
-        rent_amount=data.rent_amount,
-        deposit_amount=data.deposit_amount,
-        vehicle_value=data.vehicle_value,
-        initial_fee=data.initial_fee,
-        car_group=data.car_group,
-        car_segment=data.car_segment,
-        rental_period_months=data.rental_period_months,
         submitted_by=user.get('preferred_username', user.get('sub', 'unknown')),
+        **totals,
     )
     db.add(application)
     db.commit()
     db.refresh(application)
 
+    db.add_all(_build_vehicle_items(application.id, data.vehicles))
     folder = await SharePointService().upload_files(application.id, files)
     application.sharepoint_folder = folder
     db.commit()
-    return {'id': application.id, 'sharepoint_folder': folder}
+
+    return {'id': application.id, 'sharepoint_folder': folder, **totals}
 
 
 @router.post('/individual')
@@ -67,31 +92,27 @@ async def create_individual_application(
 ):
     user = validate_entra_token(credentials)
     data = _parse_form_payload(IndividualFormCreate, payload)
+    totals = _calculate_totals(data.vehicles)
+
     application = Application(
         applicant_type=ApplicantType.individual,
         customer_name=data.customer_name,
         pesel=data.pesel,
         nip=data.nip,
         document_number=data.document_number,
-        business_line=data.business_line,
-        car_model=data.car_model,
-        rent_amount=data.rent_amount,
-        deposit_amount=data.deposit_amount,
-        vehicle_value=data.vehicle_value,
-        initial_fee=data.initial_fee,
-        car_group=data.car_group,
-        car_segment=data.car_segment,
-        rental_period_months=data.rental_period_months,
         submitted_by=user.get('preferred_username', user.get('sub', 'unknown')),
+        **totals,
     )
     db.add(application)
     db.commit()
     db.refresh(application)
 
+    db.add_all(_build_vehicle_items(application.id, data.vehicles))
     folder = await SharePointService().upload_files(application.id, files)
     application.sharepoint_folder = folder
     db.commit()
-    return {'id': application.id, 'sharepoint_folder': folder}
+
+    return {'id': application.id, 'sharepoint_folder': folder, **totals}
 
 
 @router.get('/health-auth')

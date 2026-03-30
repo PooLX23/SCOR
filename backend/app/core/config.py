@@ -6,6 +6,7 @@ class Settings(BaseSettings):
 
     database_url: str
     db_schema: str = 'scor'
+    db_rebuild_on_start: bool = False
 
     auth_mode: str = 'entra'
     entra_tenant_id: str
