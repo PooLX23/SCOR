@@ -1,6 +1,7 @@
 import json
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -13,6 +14,15 @@ from app.services.sharepoint import SharePointService
 router = APIRouter(prefix='/applications', tags=['applications'])
 
 
+def _parse_form_payload(model_cls: type[CompanyFormCreate | IndividualFormCreate], payload: str):
+    try:
+        return model_cls(**json.loads(payload))
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=422, detail=f'Niepoprawny JSON payload: {exc.msg}') from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+
 @router.post('/company')
 async def create_company_application(
     payload: str = Form(..., description='JSON CompanyFormCreate'),
@@ -21,7 +31,7 @@ async def create_company_application(
     db: Session = Depends(get_db),
 ):
     user = validate_entra_token(credentials)
-    data = CompanyFormCreate(**json.loads(payload))
+    data = _parse_form_payload(CompanyFormCreate, payload)
     application = Application(
         applicant_type=ApplicantType.company,
         company_name=data.company_name,
@@ -56,7 +66,7 @@ async def create_individual_application(
     db: Session = Depends(get_db),
 ):
     user = validate_entra_token(credentials)
-    data = IndividualFormCreate(**json.loads(payload))
+    data = _parse_form_payload(IndividualFormCreate, payload)
     application = Application(
         applicant_type=ApplicantType.individual,
         customer_name=data.customer_name,

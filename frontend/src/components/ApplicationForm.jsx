@@ -72,7 +72,7 @@ export default function ApplicationForm({ type, token }) {
           </>
         )}
 
-        <Field name="nip" placeholder="NIP" onChange={onChange} />
+        <Field name="nip" placeholder="NIP" minLength={10} maxLength={20} onChange={onChange} />
 
         <label>
           Linia biznesowa
@@ -112,11 +112,11 @@ export default function ApplicationForm({ type, token }) {
   )
 }
 
-function Field({ name, placeholder, type = 'text', step, onChange }) {
+function Field({ name, placeholder, type = 'text', step, onChange, ...rest }) {
   return (
     <label>
       {placeholder}
-      <input required name={name} type={type} step={step} placeholder={placeholder} onChange={onChange} />
+      <input required name={name} type={type} step={step} placeholder={placeholder} onChange={onChange} {...rest} />
     </label>
   )
 }
