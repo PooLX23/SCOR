@@ -32,12 +32,14 @@ export default function ApplicationForm({ type, token }) {
   const [main, setMain] = useState(createMain(type))
   const [vehicles, setVehicles] = useState([createVehicle()])
   const [files, setFiles] = useState([])
+  const [fileInputKey, setFileInputKey] = useState(0)
   const [status, setStatus] = useState('')
 
   const resetForm = () => {
     setMain(createMain(type))
     setVehicles([createVehicle()])
     setFiles([])
+    setFileInputKey((prev) => prev + 1)
   }
 
   useEffect(() => {
@@ -123,7 +125,7 @@ export default function ApplicationForm({ type, token }) {
 
       <label className="file-input">
         Załączniki
-        <input required type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+        <input key={fileInputKey} required type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
       </label>
 
       <div className="section-divider" />
