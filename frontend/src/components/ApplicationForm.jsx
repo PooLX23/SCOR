@@ -7,6 +7,7 @@ const vehicleDefaults = {
   car_model: '',
   rent_amount: '',
   deposit_amount: '',
+  deposit_missing: false,
   vehicle_value: '',
   initial_fee: '',
   car_group: '',
@@ -15,21 +16,22 @@ const vehicleDefaults = {
 }
 
 const createVehicle = () => ({ ...vehicleDefaults })
+const createMain = (type) => (type === 'company' ? { company_name: '', nip: '', krs: '' } : { customer_name: '', pesel: '', nip: '', document_number: '' })
 
 export default function ApplicationForm({ type, token }) {
-  const [main, setMain] = useState(
-    type === 'company'
-      ? { company_name: '', nip: '', krs: '' }
-      : { customer_name: '', pesel: '', nip: '', document_number: '' }
-  )
+  const [main, setMain] = useState(createMain(type))
   const [vehicles, setVehicles] = useState([createVehicle()])
   const [files, setFiles] = useState([])
   const [status, setStatus] = useState('')
 
-  useEffect(() => {
-    setMain(type === 'company' ? { company_name: '', nip: '', krs: '' } : { customer_name: '', pesel: '', nip: '', document_number: '' })
+  const resetForm = () => {
+    setMain(createMain(type))
     setVehicles([createVehicle()])
     setFiles([])
+  }
+
+  useEffect(() => {
+    resetForm()
     setStatus('')
   }, [type])
 
@@ -37,7 +39,7 @@ export default function ApplicationForm({ type, token }) {
     const numeric = (v) => Number(v || 0)
     return {
       rent: vehicles.reduce((sum, row) => sum + numeric(row.rent_amount), 0),
-      deposit: vehicles.reduce((sum, row) => sum + numeric(row.deposit_amount), 0),
+      deposit: vehicles.reduce((sum, row) => sum + numeric(row.deposit_missing ? 0 : row.deposit_amount), 0),
       value: vehicles.reduce((sum, row) => sum + numeric(row.vehicle_value), 0),
       initial: vehicles.reduce((sum, row) => sum + numeric(row.initial_fee), 0)
     }
@@ -47,6 +49,10 @@ export default function ApplicationForm({ type, token }) {
 
   const onVehicleChange = (index, name, value) => {
     setVehicles((prev) => prev.map((row, idx) => (idx === index ? { ...row, [name]: value } : row)))
+  }
+
+  const onDepositMissingChange = (index, checked) => {
+    setVehicles((prev) => prev.map((row, idx) => (idx === index ? { ...row, deposit_missing: checked, deposit_amount: checked ? '0' : '' } : row)))
   }
 
   const addVehicle = () => setVehicles((prev) => [...prev, createVehicle()])
@@ -60,16 +66,17 @@ export default function ApplicationForm({ type, token }) {
         ...main,
         vehicles: vehicles.map((row) => ({
           ...row,
+          deposit_amount: Number(row.deposit_missing ? 0 : row.deposit_amount),
           rent_amount: Number(row.rent_amount),
-          deposit_amount: Number(row.deposit_amount),
           vehicle_value: Number(row.vehicle_value),
           initial_fee: Number(row.initial_fee),
           rental_period_months: Number(row.rental_period_months)
-        }))
+        })).map(({ deposit_missing, ...apiRow }) => apiRow)
       }
 
       const result = await submitApplication({ token, type, data: payload, files })
       setStatus(`Wysłano. ID: ${result.id}`)
+      resetForm()
     } catch (error) {
       setStatus(`Błąd: ${error?.response?.data?.detail || error.message}`)
     }
@@ -127,10 +134,30 @@ export default function ApplicationForm({ type, token }) {
 
             <Field label="Marka" value={vehicle.car_make} onChange={(e) => onVehicleChange(index, 'car_make', e.target.value)} />
             <Field label="Model" value={vehicle.car_model} onChange={(e) => onVehicleChange(index, 'car_model', e.target.value)} />
-            <Field type="number" step="0.01" label="Wysokość czynszu" value={vehicle.rent_amount} onChange={(e) => onVehicleChange(index, 'rent_amount', e.target.value)} />
-            <Field type="number" step="0.01" label="Kwota depozytu" value={vehicle.deposit_amount} onChange={(e) => onVehicleChange(index, 'deposit_amount', e.target.value)} />
-            <Field type="number" step="0.01" label="Wartość pojazdu" value={vehicle.vehicle_value} onChange={(e) => onVehicleChange(index, 'vehicle_value', e.target.value)} />
-            <Field type="number" step="0.01" label="Opłata wstępna" value={vehicle.initial_fee} onChange={(e) => onVehicleChange(index, 'initial_fee', e.target.value)} />
+            <Field type="number" step="0.01" min={0} label="Wysokość czynszu" value={vehicle.rent_amount} onChange={(e) => onVehicleChange(index, 'rent_amount', e.target.value)} />
+
+            <label>
+              Kwota depozytu
+              <input
+                required
+                type="number"
+                step="0.01"
+                min={0}
+                disabled={vehicle.deposit_missing}
+                value={vehicle.deposit_missing ? '0' : vehicle.deposit_amount}
+                onChange={(e) => onVehicleChange(index, 'deposit_amount', e.target.value)}
+              />
+              <span className="checkbox-inline">
+                <input
+                  type="checkbox"
+                  checked={vehicle.deposit_missing}
+                  onChange={(e) => onDepositMissingChange(index, e.target.checked)}
+                /> BRAK
+              </span>
+            </label>
+
+            <Field type="number" step="0.01" min={0} label="Wartość pojazdu" value={vehicle.vehicle_value} onChange={(e) => onVehicleChange(index, 'vehicle_value', e.target.value)} />
+            <Field type="number" step="0.01" min={0} label="Opłata wstępna" value={vehicle.initial_fee} onChange={(e) => onVehicleChange(index, 'initial_fee', e.target.value)} />
             <Field label="Grupa samochodu" value={vehicle.car_group} onChange={(e) => onVehicleChange(index, 'car_group', e.target.value)} />
 
             <label>
@@ -141,7 +168,7 @@ export default function ApplicationForm({ type, token }) {
               </select>
             </label>
 
-            <Field type="number" label="Okres wynajmu (miesiące)" value={vehicle.rental_period_months} onChange={(e) => onVehicleChange(index, 'rental_period_months', e.target.value)} />
+            <Field type="number" min={1} label="Okres wynajmu (miesiące)" value={vehicle.rental_period_months} onChange={(e) => onVehicleChange(index, 'rental_period_months', e.target.value)} />
           </div>
         </div>
       ))}

@@ -9,9 +9,9 @@ class VehicleItemCreate(BaseModel):
     business_line: str
     car_make: str = Field(min_length=1)
     car_model: str = Field(min_length=1)
-    rent_amount: float = Field(gt=0)
+    rent_amount: float = Field(ge=0)
     deposit_amount: float = Field(ge=0)
-    vehicle_value: float = Field(gt=0)
+    vehicle_value: float = Field(ge=0)
     initial_fee: float = Field(ge=0)
     car_group: str = Field(min_length=1)
     car_class: str
