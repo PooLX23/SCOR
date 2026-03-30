@@ -96,7 +96,7 @@ export default function ApplicationForm({ type, token }) {
       setStatus(`Wysłano. ID: ${result.id}`)
       resetForm()
     } catch (error) {
-      setStatus(`Błąd: ${error?.response?.data?.detail || error.message}`)
+      setStatus(`Błąd: ${formatErrorMessage(error)}`)
     }
   }
 
@@ -222,4 +222,26 @@ function ReadOnlyField({ label, value }) {
       <input value={value} readOnly />
     </label>
   )
+}
+
+
+function formatErrorMessage(error) {
+  const detail = error?.response?.data?.detail
+  if (!detail) return error?.message || 'Nieznany błąd'
+
+  if (typeof detail === 'string') return detail
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (item?.msg) return `${item.msg}${item?.loc ? ` (${item.loc.join('.')})` : ''}`
+        return JSON.stringify(item)
+      })
+      .join('; ')
+  }
+
+  if (typeof detail === 'object') return JSON.stringify(detail)
+
+  return String(detail)
 }
