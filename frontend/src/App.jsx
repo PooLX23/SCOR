@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useCallback, useEffect, useState } from 'react'
-
 import { useMsal } from '@azure/msal-react'
 import { loginRequest } from './auth/msal'
 import ApplicationForm from './components/ApplicationForm'
@@ -10,8 +8,7 @@ export default function App() {
   const { instance, accounts } = useMsal()
   const [formType, setFormType] = useState('company')
 
-  const account = accounts[0]
-
+  const account = accounts[0] || instance.getActiveAccount()
 
   const login = async () => {
     await instance.loginRedirect(loginRequest)
@@ -35,7 +32,6 @@ export default function App() {
       throw error
     }
   }, [instance, account])
-
 
   const loginBgStyle = env.loginBackgroundUrl
     ? { '--login-bg': `url(${env.loginBackgroundUrl})` }
@@ -71,7 +67,6 @@ export default function App() {
             {env.appLogoUrl && <img className="app-logo" src={env.appLogoUrl} alt="Logo aplikacji" />}
             <button className="btn btn--ghost" type="button" onClick={logout}>Wyloguj</button>
           </div>
-
         </div>
 
         <div className="type-switcher">
@@ -94,8 +89,6 @@ export default function App() {
 
       <section className="glass-card">
         <TokenForm type={formType} getAccessToken={getAccessToken} />
-        <TokenForm type={formType} getAccessToken={getAccessToken} />
-
       </section>
     </main>
   )
@@ -134,7 +127,6 @@ function TokenForm({ type, getAccessToken }) {
       </div>
     )
   }
-
 
   return <ApplicationForm type={type} token={token} />
 }
