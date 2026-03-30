@@ -1,8 +1,6 @@
-<<<<<<< codex/create-client-scoring-application-3z3shv
 import { useCallback, useEffect, useState } from 'react'
-=======
-import { useEffect, useMemo, useState } from 'react'
->>>>>>> main
+import { useCallback, useEffect, useState } from 'react'
+
 import { useMsal } from '@azure/msal-react'
 import { loginRequest } from './auth/msal'
 import ApplicationForm from './components/ApplicationForm'
@@ -14,22 +12,11 @@ export default function App() {
 
   const account = accounts[0]
 
-<<<<<<< codex/create-client-scoring-application-3z3shv
-=======
-  const tokenPromise = useMemo(
-    () => async () => {
-      const response = await instance.acquireTokenSilent({ ...loginRequest, account })
-      return response.accessToken
-    },
-    [instance, account]
-  )
 
->>>>>>> main
   const login = async () => {
     await instance.loginRedirect(loginRequest)
   }
 
-<<<<<<< codex/create-client-scoring-application-3z3shv
   const logout = async () => {
     await instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin })
   }
@@ -49,8 +36,7 @@ export default function App() {
     }
   }, [instance, account])
 
-=======
->>>>>>> main
+
   const loginBgStyle = env.loginBackgroundUrl
     ? { '--login-bg': `url(${env.loginBackgroundUrl})` }
     : {}
@@ -81,14 +67,11 @@ export default function App() {
             <h1>Nowy wniosek scoringowy</h1>
             <p className="muted">Zalogowano jako: <strong>{account.username}</strong></p>
           </div>
-<<<<<<< codex/create-client-scoring-application-3z3shv
           <div className="header-actions">
             {env.appLogoUrl && <img className="app-logo" src={env.appLogoUrl} alt="Logo aplikacji" />}
             <button className="btn btn--ghost" type="button" onClick={logout}>Wyloguj</button>
           </div>
-=======
-          {env.appLogoUrl && <img className="app-logo" src={env.appLogoUrl} alt="Logo aplikacji" />}
->>>>>>> main
+
         </div>
 
         <div className="type-switcher">
@@ -110,17 +93,14 @@ export default function App() {
       </section>
 
       <section className="glass-card">
-<<<<<<< codex/create-client-scoring-application-3z3shv
         <TokenForm type={formType} getAccessToken={getAccessToken} />
-=======
-        <TokenForm type={formType} tokenPromise={tokenPromise} />
->>>>>>> main
+        <TokenForm type={formType} getAccessToken={getAccessToken} />
+
       </section>
     </main>
   )
 }
 
-<<<<<<< codex/create-client-scoring-application-3z3shv
 function TokenForm({ type, getAccessToken }) {
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -155,15 +135,6 @@ function TokenForm({ type, getAccessToken }) {
     )
   }
 
-=======
-function TokenForm({ type, tokenPromise }) {
-  const [token, setToken] = useState(null)
 
-  useEffect(() => {
-    tokenPromise().then(setToken).catch(() => setToken(null))
-  }, [tokenPromise])
-
-  if (!token) return <p className="loading">Pobieranie tokenu...</p>
->>>>>>> main
   return <ApplicationForm type={type} token={token} />
 }

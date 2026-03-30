@@ -37,3 +37,9 @@ cd frontend
 npm install
 npm run dev
 ```
+
+
+## Troubleshooting
+
+- Jeśli `npm run build` zwraca błąd `Unexpected "<<"`, sprawdź czy w plikach frontendu nie zostały markery konfliktu merge (`<<<<<<<`, `=======`, `>>>>>>>`).
+- Po `git pull` uruchom ponownie `npm run build`.
