@@ -18,6 +18,16 @@ const vehicleDefaults = {
 const createVehicle = () => ({ ...vehicleDefaults })
 const createMain = (type) => (type === 'company' ? { company_name: '', nip: '', krs: '' } : { customer_name: '', pesel: '', nip: '', document_number: '' })
 
+
+const sanitizeMoney = (value) => {
+  const normalized = value.replace(',', '.')
+  const cleaned = normalized.replace(/[^0-9.]/g, '')
+  const [intPart, ...decimals] = cleaned.split('.')
+  return decimals.length ? `${intPart}.${decimals.join('')}` : intPart
+}
+
+const sanitizeInteger = (value) => value.replace(/\D/g, '')
+
 export default function ApplicationForm({ type, token }) {
   const [main, setMain] = useState(createMain(type))
   const [vehicles, setVehicles] = useState([createVehicle()])
@@ -49,6 +59,14 @@ export default function ApplicationForm({ type, token }) {
 
   const onVehicleChange = (index, name, value) => {
     setVehicles((prev) => prev.map((row, idx) => (idx === index ? { ...row, [name]: value } : row)))
+  }
+
+  const onMoneyChange = (index, name, value) => {
+    onVehicleChange(index, name, sanitizeMoney(value))
+  }
+
+  const onIntegerChange = (index, name, value) => {
+    onVehicleChange(index, name, sanitizeInteger(value))
   }
 
   const onDepositMissingChange = (index, checked) => {
@@ -134,18 +152,18 @@ export default function ApplicationForm({ type, token }) {
 
             <Field label="Marka" value={vehicle.car_make} onChange={(e) => onVehicleChange(index, 'car_make', e.target.value)} />
             <Field label="Model" value={vehicle.car_model} onChange={(e) => onVehicleChange(index, 'car_model', e.target.value)} />
-            <Field type="number" step="0.01" min={0} label="Wysokość czynszu" value={vehicle.rent_amount} onChange={(e) => onVehicleChange(index, 'rent_amount', e.target.value)} />
+            <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Wysokość czynszu" value={vehicle.rent_amount} onChange={(e) => onMoneyChange(index, 'rent_amount', e.target.value)} />
 
             <label>
               Kwota depozytu
               <input
                 required
-                type="number"
-                step="0.01"
-                min={0}
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.]?[0-9]*"
                 disabled={vehicle.deposit_missing}
                 value={vehicle.deposit_missing ? '0' : vehicle.deposit_amount}
-                onChange={(e) => onVehicleChange(index, 'deposit_amount', e.target.value)}
+                onChange={(e) => onMoneyChange(index, 'deposit_amount', e.target.value)}
               />
               <span className="checkbox-inline">
                 <input
@@ -156,8 +174,8 @@ export default function ApplicationForm({ type, token }) {
               </span>
             </label>
 
-            <Field type="number" step="0.01" min={0} label="Wartość pojazdu" value={vehicle.vehicle_value} onChange={(e) => onVehicleChange(index, 'vehicle_value', e.target.value)} />
-            <Field type="number" step="0.01" min={0} label="Opłata wstępna" value={vehicle.initial_fee} onChange={(e) => onVehicleChange(index, 'initial_fee', e.target.value)} />
+            <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Wartość pojazdu" value={vehicle.vehicle_value} onChange={(e) => onMoneyChange(index, 'vehicle_value', e.target.value)} />
+            <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Opłata wstępna" value={vehicle.initial_fee} onChange={(e) => onMoneyChange(index, 'initial_fee', e.target.value)} />
             <Field label="Grupa samochodu" value={vehicle.car_group} onChange={(e) => onVehicleChange(index, 'car_group', e.target.value)} />
 
             <label>
@@ -168,7 +186,7 @@ export default function ApplicationForm({ type, token }) {
               </select>
             </label>
 
-            <Field type="number" min={1} label="Okres wynajmu (miesiące)" value={vehicle.rental_period_months} onChange={(e) => onVehicleChange(index, 'rental_period_months', e.target.value)} />
+            <Field type="text" inputMode="numeric" pattern="[0-9]*" label="Okres wynajmu (miesiące)" value={vehicle.rental_period_months} onChange={(e) => onIntegerChange(index, 'rental_period_months', e.target.value)} />
           </div>
         </div>
       ))}

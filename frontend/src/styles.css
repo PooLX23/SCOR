@@ -258,5 +258,8 @@ select:focus {
 }
 
 .checkbox-inline input {
-  width: auto;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--sixt-orange);
+  appearance: auto;
 }
