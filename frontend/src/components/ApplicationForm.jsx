@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { submitApplication } from '../services/api'
+import { fetchCarGroups, submitApplication } from '../services/api'
 
 const vehicleDefaults = {
   business_line: 'ST',
@@ -34,6 +34,7 @@ export default function ApplicationForm({ type, token }) {
   const [files, setFiles] = useState([])
   const [fileInputKey, setFileInputKey] = useState(0)
   const [status, setStatus] = useState('')
+  const [carGroupOptions, setCarGroupOptions] = useState([])
 
   const resetForm = () => {
     setMain(createMain(type))
@@ -46,6 +47,12 @@ export default function ApplicationForm({ type, token }) {
     resetForm()
     setStatus('')
   }, [type])
+
+  useEffect(() => {
+    fetchCarGroups(token)
+      .then((items) => setCarGroupOptions(items))
+      .catch(() => setCarGroupOptions([]))
+  }, [token])
 
   const totals = useMemo(() => {
     const numeric = (v) => Number(v || 0)
@@ -178,7 +185,19 @@ export default function ApplicationForm({ type, token }) {
 
             <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Wartość pojazdu" value={vehicle.vehicle_value} onChange={(e) => onMoneyChange(index, 'vehicle_value', e.target.value)} />
             <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Opłata wstępna" value={vehicle.initial_fee} onChange={(e) => onMoneyChange(index, 'initial_fee', e.target.value)} />
-            <Field label="Grupa samochodu" value={vehicle.car_group} onChange={(e) => onVehicleChange(index, 'car_group', e.target.value)} />
+            <label>
+              Grupa samochodu
+              <select
+                required
+                value={vehicle.car_group}
+                onChange={(e) => onVehicleChange(index, 'car_group', e.target.value)}
+              >
+                <option value="" disabled>Wybierz grupę</option>
+                {carGroupOptions.map((group) => (
+                  <option key={group} value={group}>{group}</option>
+                ))}
+              </select>
+            </label>
 
             <label>
               Klasa samochodu

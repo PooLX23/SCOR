@@ -12,3 +12,11 @@ export async function submitApplication({ token, type, data, files }) {
   })
   return response.data
 }
+
+export async function fetchCarGroups(token) {
+  const url = `${env.apiBaseUrl}/applications/car-groups`
+  const response = await axios.get(url, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return response.data?.items || []
+}

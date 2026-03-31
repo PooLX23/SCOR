@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.models.application import ApplicantType, Application, ApplicationVehicleItem
 from app.schemas.application import CompanyFormCreate, IndividualFormCreate
 from app.services.auth import bearer_scheme, validate_entra_token
+from app.services.car_groups import CarGroupsService
 from app.services.sharepoint import SharePointService
 
 router = APIRouter(prefix='/applications', tags=['applications'])
@@ -123,3 +124,10 @@ def auth_health(credentials=Depends(bearer_scheme)):
         if settings.reception_group_id not in groups:
             raise HTTPException(status_code=403, detail='Brak uprawnień do składania wniosków')
     return {'ok': True, 'user': payload.get('preferred_username')}
+
+
+@router.get('/car-groups')
+def list_car_groups(credentials=Depends(bearer_scheme)):
+    validate_entra_token(credentials)
+    groups = CarGroupsService().list_groups()
+    return {'items': groups}

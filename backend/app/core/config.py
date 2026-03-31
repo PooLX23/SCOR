@@ -21,5 +21,7 @@ class Settings(BaseSettings):
     sharepoint_drive_id: str | None = None
     sharepoint_root_folder: str = 'scor-wnioski'
 
+    mssql_car_groups_url: str | None = None
+
 
 settings = Settings()
