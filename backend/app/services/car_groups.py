@@ -1,6 +1,11 @@
+import logging
+
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class CarGroupsService:
@@ -20,7 +25,10 @@ class CarGroupsService:
             ORDER BY OPIS
             """
         )
-        with self.engine.connect() as conn:
-            rows = conn.execute(query).all()
-
-        return [row[0] for row in rows if row[0]]
+        try:
+            with self.engine.connect() as conn:
+                rows = conn.execute(query).all()
+            return [row[0] for row in rows if row[0]]
+        except SQLAlchemyError as exc:
+            logger.exception('MSSQL car-group lookup failed; returning empty dictionary. Error: %s', exc)
+            return []
