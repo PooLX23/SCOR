@@ -10,6 +10,7 @@ const vehicleDefaults = {
   deposit_missing: false,
   vehicle_value: '',
   initial_fee: '',
+  initial_fee_missing: false,
   car_group: '',
   car_class: 'standard',
   rental_period_months: ''
@@ -60,7 +61,7 @@ export default function ApplicationForm({ type, token }) {
       rent: vehicles.reduce((sum, row) => sum + numeric(row.rent_amount), 0),
       deposit: vehicles.reduce((sum, row) => sum + numeric(row.deposit_missing ? 0 : row.deposit_amount), 0),
       value: vehicles.reduce((sum, row) => sum + numeric(row.vehicle_value), 0),
-      initial: vehicles.reduce((sum, row) => sum + numeric(row.initial_fee), 0)
+      initial: vehicles.reduce((sum, row) => sum + numeric(row.initial_fee_missing ? 0 : row.initial_fee), 0)
     }
   }, [vehicles])
 
@@ -82,6 +83,10 @@ export default function ApplicationForm({ type, token }) {
     setVehicles((prev) => prev.map((row, idx) => (idx === index ? { ...row, deposit_missing: checked, deposit_amount: checked ? '0' : '' } : row)))
   }
 
+  const onInitialFeeMissingChange = (index, checked) => {
+    setVehicles((prev) => prev.map((row, idx) => (idx === index ? { ...row, initial_fee_missing: checked, initial_fee: checked ? '0' : '' } : row)))
+  }
+
   const addVehicle = () => setVehicles((prev) => [...prev, createVehicle()])
   const removeVehicle = (index) => setVehicles((prev) => prev.filter((_, idx) => idx !== index))
 
@@ -96,9 +101,9 @@ export default function ApplicationForm({ type, token }) {
           deposit_amount: Number(row.deposit_missing ? 0 : row.deposit_amount),
           rent_amount: Number(row.rent_amount),
           vehicle_value: Number(row.vehicle_value),
-          initial_fee: Number(row.initial_fee),
+          initial_fee: Number(row.initial_fee_missing ? 0 : row.initial_fee),
           rental_period_months: Number(row.rental_period_months)
-        })).map(({ deposit_missing, ...apiRow }) => apiRow)
+        })).map(({ deposit_missing, initial_fee_missing, ...apiRow }) => apiRow)
       }
 
       const result = await submitApplication({ token, type, data: payload, files })
@@ -184,7 +189,25 @@ export default function ApplicationForm({ type, token }) {
             </label>
 
             <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Wartość pojazdu" value={vehicle.vehicle_value} onChange={(e) => onMoneyChange(index, 'vehicle_value', e.target.value)} />
-            <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Opłata wstępna" value={vehicle.initial_fee} onChange={(e) => onMoneyChange(index, 'initial_fee', e.target.value)} />
+            <label>
+              Opłata wstępna
+              <input
+                required
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.]?[0-9]*"
+                disabled={vehicle.initial_fee_missing}
+                value={vehicle.initial_fee_missing ? '0' : vehicle.initial_fee}
+                onChange={(e) => onMoneyChange(index, 'initial_fee', e.target.value)}
+              />
+              <span className="checkbox-inline">
+                <input
+                  type="checkbox"
+                  checked={vehicle.initial_fee_missing}
+                  onChange={(e) => onInitialFeeMissingChange(index, e.target.checked)}
+                /> BRAK
+              </span>
+            </label>
             <label>
               Grupa samochodu
               <select
