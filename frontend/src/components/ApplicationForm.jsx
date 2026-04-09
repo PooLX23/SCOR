@@ -72,7 +72,15 @@ export default function ApplicationForm({ type, token }) {
   }
 
   const onMoneyChange = (index, name, value) => {
-    onVehicleChange(index, name, sanitizeMoney(value))
+    const sanitized = sanitizeMoney(value)
+    setVehicles((prev) => prev.map((row, idx) => {
+      if (idx !== index) return row
+      const next = { ...row, [name]: sanitized }
+      if (name === 'vehicle_value' && Number(sanitized || 0) >= 200000) {
+        next.car_class = 'premium'
+      }
+      return next
+    }))
   }
 
   const onIntegerChange = (index, name, value) => {
