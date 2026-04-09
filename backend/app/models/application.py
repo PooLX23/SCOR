@@ -13,12 +13,21 @@ class ApplicantType(str, enum.Enum):
     individual = 'individual'
 
 
+class ApplicationStatus(str, enum.Enum):
+    new = 'nowy'
+    processing = 'procesowany'
+    negative = 'negatywny'
+    positive = 'pozytywny'
+    manual_verification = 'weryfikacja manualna'
+
+
 class Application(Base):
     __tablename__ = 'wnioski'
     __table_args__ = {'schema': settings.db_schema}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     applicant_type: Mapped[ApplicantType] = mapped_column(Enum(ApplicantType), nullable=False)
+    status: Mapped[ApplicationStatus] = mapped_column(Enum(ApplicationStatus), nullable=False, default=ApplicationStatus.new)
 
     company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)

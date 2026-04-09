@@ -26,3 +26,11 @@ def get_db() -> Generator[Session, None, None]:
 def ensure_schema() -> None:
     with engine.begin() as conn:
         conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS {settings.db_schema}'))
+
+
+def ensure_status_column() -> None:
+    with engine.begin() as conn:
+        conn.execute(text(f"""
+            ALTER TABLE {settings.db_schema}.wnioski
+            ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'nowy'
+        """))
