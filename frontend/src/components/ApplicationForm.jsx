@@ -76,8 +76,8 @@ export default function ApplicationForm({ type, token }) {
     setVehicles((prev) => prev.map((row, idx) => {
       if (idx !== index) return row
       const next = { ...row, [name]: sanitized }
-      if (name === 'vehicle_value' && Number(sanitized || 0) >= 200000) {
-        next.car_class = 'premium'
+      if (name === 'vehicle_value') {
+        next.car_class = Number(sanitized || 0) >= 200000 ? 'premium' : 'standard'
       }
       return next
     }))
