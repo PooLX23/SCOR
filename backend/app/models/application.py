@@ -27,7 +27,16 @@ class Application(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     applicant_type: Mapped[ApplicantType] = mapped_column(Enum(ApplicantType), nullable=False)
-    status: Mapped[ApplicationStatus] = mapped_column(Enum(ApplicationStatus), nullable=False, default=ApplicationStatus.new)
+    status: Mapped[ApplicationStatus] = mapped_column(
+        Enum(
+            ApplicationStatus,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            native_enum=False,
+            name='application_status',
+        ),
+        nullable=False,
+        default=ApplicationStatus.new,
+    )
 
     company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)

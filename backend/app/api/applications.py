@@ -175,6 +175,13 @@ def all_applications(credentials=Depends(bearer_scheme), db: Session = Depends(g
     return {'items': [_serialize_application(r) for r in records]}
 
 
+@router.get('/car-groups')
+def list_car_groups(credentials=Depends(bearer_scheme)):
+    validate_entra_token(credentials)
+    groups = CarGroupsService().list_groups()
+    return {'items': groups}
+
+
 @router.get('/{application_id}')
 def application_details(application_id: int, credentials=Depends(bearer_scheme), db: Session = Depends(get_db)):
     payload = validate_entra_token(credentials)
@@ -214,10 +221,3 @@ def application_details(application_id: int, credentials=Depends(bearer_scheme),
 def auth_health(credentials=Depends(bearer_scheme)):
     payload = validate_entra_token(credentials)
     return {'ok': True, 'user': _user_id(payload), 'is_reviewer': _is_reviewer(payload)}
-
-
-@router.get('/car-groups')
-def list_car_groups(credentials=Depends(bearer_scheme)):
-    validate_entra_token(credentials)
-    groups = CarGroupsService().list_groups()
-    return {'items': groups}
