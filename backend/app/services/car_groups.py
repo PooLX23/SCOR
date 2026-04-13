@@ -39,7 +39,7 @@ class CarGroupsService:
         query = text(
             """
             SELECT DISTINCT NAZWAMARKI
-            FROM [Eurorent].[dbo].[MARKA]
+            FROM [Eurorent].[dbo].[MARKI]
             WHERE LOWER(NAZWAMARKI) LIKE :pattern
             ORDER BY NAZWAMARKI
             """
@@ -51,7 +51,7 @@ class CarGroupsService:
         query = text(
             """
             SELECT DISTINCT NAZWAMODELU
-            FROM [Eurorent].[dbo].[MODEL]
+            FROM [Eurorent].[dbo].[MODELE]
             WHERE LOWER(NAZWAMODELU) LIKE :pattern
               AND (:brand = '' OR LOWER(NAZWAMARKI) = LOWER(:brand))
             ORDER BY NAZWAMODELU
@@ -64,7 +64,7 @@ class CarGroupsService:
         query = text(
             """
             SELECT TOP 1 NAZWAMARKI
-            FROM [Eurorent].[dbo].[MODEL]
+            FROM [Eurorent].[dbo].[MODELE]
             WHERE LOWER(NAZWAMODELU) = LOWER(:model_name)
             ORDER BY NAZWAMARKI
             """
