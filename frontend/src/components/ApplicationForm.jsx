@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchCarGroups, submitApplication } from '../services/api'
+import { fetchBrandForModel, fetchCarBrands, fetchCarGroups, fetchCarModels, submitApplication } from '../services/api'
 
 const vehicleDefaults = {
   business_line: 'ST',
@@ -36,12 +36,16 @@ export default function ApplicationForm({ type, token }) {
   const [fileInputKey, setFileInputKey] = useState(0)
   const [status, setStatus] = useState('')
   const [carGroupOptions, setCarGroupOptions] = useState([])
+  const [brandOptionsByRow, setBrandOptionsByRow] = useState({})
+  const [modelOptionsByRow, setModelOptionsByRow] = useState({})
 
   const resetForm = () => {
     setMain(createMain(type))
     setVehicles([createVehicle()])
     setFiles([])
     setFileInputKey((prev) => prev + 1)
+    setBrandOptionsByRow({})
+    setModelOptionsByRow({})
   }
 
   useEffect(() => {
@@ -85,6 +89,44 @@ export default function ApplicationForm({ type, token }) {
 
   const onIntegerChange = (index, name, value) => {
     onVehicleChange(index, name, sanitizeInteger(value))
+  }
+
+
+  const onCarMakeInput = async (index, value) => {
+    onVehicleChange(index, 'car_make', value)
+    try {
+      const brands = await fetchCarBrands(token, value)
+      setBrandOptionsByRow((prev) => ({ ...prev, [index]: brands }))
+
+      const modelsForBrand = await fetchCarModels(token, vehicles[index]?.car_model || '', value)
+      setModelOptionsByRow((prev) => ({ ...prev, [index]: modelsForBrand }))
+    } catch {
+      setBrandOptionsByRow((prev) => ({ ...prev, [index]: [] }))
+      setModelOptionsByRow((prev) => ({ ...prev, [index]: [] }))
+    }
+  }
+
+  const onCarModelInput = async (index, value) => {
+    onVehicleChange(index, 'car_model', value)
+    const currentBrand = vehicles[index]?.car_make || ''
+    try {
+      const models = await fetchCarModels(token, value, currentBrand)
+      setModelOptionsByRow((prev) => ({ ...prev, [index]: models }))
+
+      if (!currentBrand && value.length >= 2) {
+        const detectedBrand = await fetchBrandForModel(token, value)
+        if (detectedBrand) {
+          onVehicleChange(index, 'car_make', detectedBrand)
+          const brands = await fetchCarBrands(token, detectedBrand)
+          setBrandOptionsByRow((prev) => ({ ...prev, [index]: brands }))
+
+          const scopedModels = await fetchCarModels(token, value, detectedBrand)
+          setModelOptionsByRow((prev) => ({ ...prev, [index]: scopedModels }))
+        }
+      }
+    } catch {
+      setModelOptionsByRow((prev) => ({ ...prev, [index]: [] }))
+    }
   }
 
   const onDepositMissingChange = (index, checked) => {
@@ -172,8 +214,34 @@ export default function ApplicationForm({ type, token }) {
               </select>
             </label>
 
-            <Field label="Marka" value={vehicle.car_make} onChange={(e) => onVehicleChange(index, 'car_make', e.target.value)} />
-            <Field label="Model" value={vehicle.car_model} onChange={(e) => onVehicleChange(index, 'car_model', e.target.value)} />
+            <label>
+              Marka
+              <input
+                required
+                value={vehicle.car_make}
+                onChange={(e) => onCarMakeInput(index, e.target.value)}
+                list={`brand-options-${index}`}
+              />
+              <datalist id={`brand-options-${index}`}>
+                {(brandOptionsByRow[index] || []).map((brand) => (
+                  <option key={brand} value={brand} />
+                ))}
+              </datalist>
+            </label>
+            <label>
+              Model
+              <input
+                required
+                value={vehicle.car_model}
+                onChange={(e) => onCarModelInput(index, e.target.value)}
+                list={`model-options-${index}`}
+              />
+              <datalist id={`model-options-${index}`}>
+                {(modelOptionsByRow[index] || []).map((model) => (
+                  <option key={model} value={model} />
+                ))}
+              </datalist>
+            </label>
             <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Wysokość czynszu" value={vehicle.rent_amount} onChange={(e) => onMoneyChange(index, 'rent_amount', e.target.value)} />
 
             <label>

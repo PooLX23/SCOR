@@ -182,6 +182,28 @@ def list_car_groups(credentials=Depends(bearer_scheme)):
     return {'items': groups}
 
 
+
+
+@router.get('/car-brands')
+def list_car_brands(q: str = '', credentials=Depends(bearer_scheme)):
+    validate_entra_token(credentials)
+    items = CarGroupsService().list_brands(q)
+    return {'items': items}
+
+
+@router.get('/car-models')
+def list_car_models(q: str = '', brand: str = '', credentials=Depends(bearer_scheme)):
+    validate_entra_token(credentials)
+    items = CarGroupsService().list_models(q, brand)
+    return {'items': items}
+
+
+@router.get('/car-brand-for-model')
+def car_brand_for_model(model: str, credentials=Depends(bearer_scheme)):
+    validate_entra_token(credentials)
+    brand = CarGroupsService().resolve_brand_for_model(model)
+    return {'brand': brand}
+
 @router.get('/{application_id}')
 def application_details(application_id: int, credentials=Depends(bearer_scheme), db: Session = Depends(get_db)):
     payload = validate_entra_token(credentials)

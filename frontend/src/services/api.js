@@ -52,3 +52,28 @@ export async function fetchApplicationDetails(token, applicationId) {
   })
   return response.data
 }
+
+
+export async function fetchCarBrands(token, q = '') {
+  const response = await axios.get(`${env.apiBaseUrl}/applications/car-brands`, {
+    headers: authHeader(token),
+    params: { q }
+  })
+  return response.data?.items || []
+}
+
+export async function fetchCarModels(token, q = '', brand = '') {
+  const response = await axios.get(`${env.apiBaseUrl}/applications/car-models`, {
+    headers: authHeader(token),
+    params: { q, brand }
+  })
+  return response.data?.items || []
+}
+
+export async function fetchBrandForModel(token, model) {
+  const response = await axios.get(`${env.apiBaseUrl}/applications/car-brand-for-model`, {
+    headers: authHeader(token),
+    params: { model }
+  })
+  return response.data?.brand || null
+}
