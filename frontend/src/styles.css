@@ -287,6 +287,37 @@ select:focus {
   gap: 14px;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.tab {
+  width: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 12px 12px 0 0;
+  padding: 10px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab--active {
+  border-color: rgba(255, 95, 0, 0.8);
+  background: linear-gradient(180deg, var(--sixt-orange) 0%, var(--sixt-orange-dark) 100%);
+}
+
+.tab:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 95, 0, 0.25);
+}
+
 .apps-table {
   width: 100%;
   border-collapse: collapse;

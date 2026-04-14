@@ -14,6 +14,11 @@ export default function App() {
   const { instance, accounts } = useMsal()
   const [formType, setFormType] = useState('company')
   const [activeTab, setActiveTab] = useState('new')
+  const tabHeaderTitles = {
+    new: 'Nowy wniosek scoringowy',
+    my: 'Moje wnioski',
+    verify: 'Weryfikacja wniosków',
+  }
 
   const account = accounts[0] || instance.getActiveAccount()
 
@@ -67,7 +72,7 @@ export default function App() {
           <div>
             <div className="brand-bar" />
             <p className="eyebrow">SCORING • SIXT</p>
-            <h1>Nowy wniosek scoringowy</h1>
+            <h1>{tabHeaderTitles[activeTab] || tabHeaderTitles.new}</h1>
             <p className="muted">Zalogowano jako: <strong>{account.username}</strong></p>
           </div>
           <div className="header-actions">
@@ -157,11 +162,35 @@ function ApplicationsPanel({ token, activeTab, setActiveTab, formType, setFormTy
 
   return (
     <div className="panel-grid">
-      <div className="type-switcher">
-        <button className={`btn ${activeTab === 'new' ? 'btn--primary' : 'btn--ghost'}`} type="button" onClick={() => setActiveTab('new')}>Nowy wniosek</button>
-        <button className={`btn ${activeTab === 'my' ? 'btn--primary' : 'btn--ghost'}`} type="button" onClick={() => setActiveTab('my')}>Moje wnioski</button>
+      <div className="tabs" role="tablist" aria-label="Sekcje aplikacji">
+        <button
+          className={`tab ${activeTab === 'new' ? 'tab--active' : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'new'}
+          onClick={() => setActiveTab('new')}
+        >
+          Nowy wniosek
+        </button>
+        <button
+          className={`tab ${activeTab === 'my' ? 'tab--active' : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'my'}
+          onClick={() => setActiveTab('my')}
+        >
+          Moje wnioski
+        </button>
         {profile.is_reviewer && (
-          <button className={`btn ${activeTab === 'verify' ? 'btn--primary' : 'btn--ghost'}`} type="button" onClick={() => setActiveTab('verify')}>Weryfikacja</button>
+          <button
+            className={`tab ${activeTab === 'verify' ? 'tab--active' : ''}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'verify'}
+            onClick={() => setActiveTab('verify')}
+          >
+            Weryfikacja
+          </button>
         )}
       </div>
 
