@@ -1,6 +1,5 @@
 import logging
 import re
-from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -56,8 +55,6 @@ class CollectionService:
 
         position = contractor.get('pozycja')
         id_kh = position
-        period_from = (datetime.utcnow() - timedelta(days=365 * 3)).strftime('%Y-%m-%d')
-
         avg_row = self._query_one(
             self.symfonia_engine,
             text(
@@ -65,10 +62,10 @@ class CollectionService:
                 SELECT AVG(CAST(DniPoTerminie AS FLOAT)) AS avg_days
                 FROM [FK_EURORENT].[dbo].[MAPRaportDPD]
                 WHERE IdFK_Kontrahenta = :position
-                  AND Zakres >= :period_from
+                  AND Zakres = 'Okres - 3 lata od dziś'
                 """
             ),
-            {'position': position, 'period_from': period_from},
+            {'position': position},
         )
         dep_row = self._query_one(
             self.eurorent_engine,
