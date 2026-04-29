@@ -44,7 +44,7 @@ class CollectionService:
             self.symfonia_engine,
             text(
                 """
-                SELECT TOP 1 pozycja, IdKhSymfonia, nip
+                SELECT TOP 1 pozycja, nip
                 FROM [FK_EURORENT].[FK].[fk_kontrahenci_tmp]
                 WHERE RIGHT(REPLACE(REPLACE(REPLACE(UPPER(nip), 'PL', ''), '-', ''), ' ', ''), 10) = :nip
                 """
@@ -55,7 +55,7 @@ class CollectionService:
             return {'avg_days_past_due': None, 'deposits_aa_cfm_rac': None, 'deposits_orders': None, 'position': None}
 
         position = contractor.get('pozycja')
-        id_kh = contractor.get('IdKhSymfonia')
+        id_kh = position
         period_from = (datetime.utcnow() - timedelta(days=365 * 3)).strftime('%Y-%m-%d')
 
         avg_row = self._query_one(
