@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('uvicorn.error')
 
 
 def _normalize_nip(raw: str | None) -> str:
@@ -27,7 +27,7 @@ class CollectionService:
         if engine is None:
             return None
         if settings.log_external_sql:
-            logger.info('External SQL [collection]: %s | params=%s', str(query), params)
+            logger.warning('External SQL [collection]: %s | params=%s', str(query), params)
         try:
             with engine.connect() as conn:
                 row = conn.execute(query, params).mappings().first()

@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('uvicorn.error')
 
 
 class CarGroupsService:
@@ -18,7 +18,7 @@ class CarGroupsService:
             return []
         effective_params = params or {}
         if settings.log_external_sql:
-            logger.info('External SQL [car-groups]: %s | params=%s', str(query), effective_params)
+            logger.warning('External SQL [car-groups]: %s | params=%s', str(query), effective_params)
         try:
             with self.engine.connect() as conn:
                 return conn.execute(query, effective_params).all()
