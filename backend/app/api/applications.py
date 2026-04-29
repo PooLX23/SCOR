@@ -229,9 +229,26 @@ def application_details(application_id: int, credentials=Depends(bearer_scheme),
         raise HTTPException(status_code=403, detail='Brak dostępu do szczegółów tego wniosku')
 
     vehicle_rows = db.query(ApplicationVehicleItem).filter(ApplicationVehicleItem.application_id == record.id).all()
+    last_snapshot = (
+        db.query(ApplicationCollectionSnapshot)
+        .filter(ApplicationCollectionSnapshot.application_id == record.id)
+        .order_by(desc(ApplicationCollectionSnapshot.created_at))
+        .first()
+    )
 
     details = _serialize_application(record)
     details['collection_comment'] = record.collection_comment
+    details['collection_snapshot'] = (
+        {
+            'avg_days_past_due': last_snapshot.avg_days_past_due,
+            'deposits_aa_cfm_rac': last_snapshot.deposits_aa_cfm_rac,
+            'deposits_orders': last_snapshot.deposits_orders,
+            'source_position': last_snapshot.source_position,
+            'created_at': last_snapshot.created_at.isoformat(),
+        }
+        if last_snapshot
+        else None
+    )
     details['vehicles'] = [
         {
             'id': item.id,

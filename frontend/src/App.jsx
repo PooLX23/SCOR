@@ -149,6 +149,7 @@ function ApplicationsPanel({ token, activeTab, setActiveTab, formType, setFormTy
   const [allItems, setAllItems] = useState([])
   const [details, setDetails] = useState(null)
   const [collectionPreview, setCollectionPreview] = useState(null)
+  const [collectionLoading, setCollectionLoading] = useState(false)
   const [collectionDecision, setCollectionDecision] = useState('pozytywna')
   const [collectionComment, setCollectionComment] = useState('')
 
@@ -176,11 +177,14 @@ function ApplicationsPanel({ token, activeTab, setActiveTab, formType, setFormTy
   }, [profile.is_reviewer, profile.is_collection, activeTab, loadAll])
 
   const openDetails = async (id) => {
+    setCollectionLoading(false)
     const row = await fetchApplicationDetails(token, id)
     setDetails(row)
     if (profile.is_collection && activeTab === 'collection' && !row.collection_decision) {
+      setCollectionLoading(true)
       const preview = await fetchCollectionPreview(token, id)
       setCollectionPreview(preview)
+      setCollectionLoading(false)
     } else {
       setCollectionPreview(null)
     }
@@ -273,21 +277,31 @@ function ApplicationsPanel({ token, activeTab, setActiveTab, formType, setFormTy
           <p>Użytkownik: {details.submitted_by}</p>
           <p>Typ: {details.applicant_type}</p>
           <p>Liczba pojazdów: {details.total_vehicle_count}</p>
-          {activeTab === 'collection' && profile.is_collection && collectionPreview && (
+          {activeTab === 'collection' && profile.is_collection && collectionLoading && (
             <div>
-              <p>Średnia Dni Po Terminie Płatności: <strong>{Number(collectionPreview.avg_days_past_due || 0).toFixed(2)}</strong></p>
-              <p>Depozyty AA/CFM/RAC: <strong>{Number(collectionPreview.deposits_aa_cfm_rac || 0).toFixed(2)}</strong></p>
-              <p>Depozyty Orders (status=2): <strong>{Number(collectionPreview.deposits_orders || 0).toFixed(2)}</strong></p>
-              <label>Decyzja Windykacji
-                <select value={collectionDecision} onChange={(e) => setCollectionDecision(e.target.value)}>
-                  <option value="pozytywna">pozytywna</option>
-                  <option value="negatywna">negatywna</option>
-                </select>
-              </label>
-              <label>Komentarz
-                <input value={collectionComment} onChange={(e) => setCollectionComment(e.target.value)} />
-              </label>
-              <button className="btn btn--primary" type="button" onClick={submitCollectionDecision}>Zapisz decyzję</button>
+              <p>Ładowanie danych windykacyjnych...</p>
+              <progress />
+            </div>
+          )}
+          {activeTab === 'collection' && profile.is_collection && !collectionLoading && (collectionPreview || details.collection_snapshot) && (
+            <div>
+              <p>Średnia Dni Po Terminie Płatności: <strong>{Number((collectionPreview || details.collection_snapshot).avg_days_past_due || 0).toFixed(2)}</strong></p>
+              <p>Depozyty AA/CFM/RAC: <strong>{Number((collectionPreview || details.collection_snapshot).deposits_aa_cfm_rac || 0).toFixed(2)}</strong></p>
+              <p>Depozyty Orders (status=2): <strong>{Number((collectionPreview || details.collection_snapshot).deposits_orders || 0).toFixed(2)}</strong></p>
+              {!details.collection_decision && (
+                <>
+                  <label>Decyzja Windykacji
+                    <select value={collectionDecision} onChange={(e) => setCollectionDecision(e.target.value)}>
+                      <option value="pozytywna">pozytywna</option>
+                      <option value="negatywna">negatywna</option>
+                    </select>
+                  </label>
+                  <label>Komentarz
+                    <input value={collectionComment} onChange={(e) => setCollectionComment(e.target.value)} />
+                  </label>
+                  <button className="btn btn--primary" type="button" onClick={submitCollectionDecision}>Zapisz decyzję</button>
+                </>
+              )}
             </div>
           )}
           <button className="btn btn--ghost" type="button" onClick={() => setDetails(null)}>Zamknij</button>
