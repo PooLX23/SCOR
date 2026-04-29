@@ -6,8 +6,10 @@ import { env } from './config/env'
 import {
   fetchAllApplications,
   fetchApplicationDetails,
+  fetchCollectionPreview,
   fetchMe,
   fetchMyApplications,
+  saveCollectionDecision,
 } from './services/api'
 
 export default function App() {
@@ -18,6 +20,7 @@ export default function App() {
     new: 'Nowy wniosek scoringowy',
     my: 'Moje wnioski',
     verify: 'Weryfikacja wniosków',
+    collection: 'Windykacja',
   }
 
   const account = accounts[0] || instance.getActiveAccount()
@@ -141,10 +144,13 @@ function TokenGate({ getAccessToken, activeTab, setActiveTab, formType, setFormT
 }
 
 function ApplicationsPanel({ token, activeTab, setActiveTab, formType, setFormType }) {
-  const [profile, setProfile] = useState({ user: '', is_reviewer: false })
+  const [profile, setProfile] = useState({ user: '', is_reviewer: false, is_collection: false })
   const [myItems, setMyItems] = useState([])
   const [allItems, setAllItems] = useState([])
   const [details, setDetails] = useState(null)
+  const [collectionPreview, setCollectionPreview] = useState(null)
+  const [collectionDecision, setCollectionDecision] = useState('pozytywna')
+  const [collectionComment, setCollectionComment] = useState('')
 
   const loadMy = useCallback(() => fetchMyApplications(token).then(setMyItems), [token])
   const loadAll = useCallback(() => fetchAllApplications(token).then(setAllItems), [token])
@@ -155,33 +161,73 @@ function ApplicationsPanel({ token, activeTab, setActiveTab, formType, setFormTy
   }, [token, loadMy])
 
   useEffect(() => {
+    if (profile.is_collection) {
+      setActiveTab('collection')
+    }
+  }, [profile.is_collection, setActiveTab])
+
+  useEffect(() => {
     if (profile.is_reviewer && activeTab === 'verify') {
       loadAll()
     }
-  }, [profile.is_reviewer, activeTab, loadAll])
+    if (profile.is_collection && activeTab === 'collection') {
+      loadAll()
+    }
+  }, [profile.is_reviewer, profile.is_collection, activeTab, loadAll])
+
+  const openDetails = async (id) => {
+    const row = await fetchApplicationDetails(token, id)
+    setDetails(row)
+    if (profile.is_collection && activeTab === 'collection' && !row.collection_decision) {
+      const preview = await fetchCollectionPreview(token, id)
+      setCollectionPreview(preview)
+    } else {
+      setCollectionPreview(null)
+    }
+  }
+
+  const submitCollectionDecision = async () => {
+    if (!details || !collectionPreview) return
+    await saveCollectionDecision(token, details.id, {
+      decision: collectionDecision,
+      comment: collectionComment,
+      avg_days_past_due: collectionPreview.avg_days_past_due,
+      deposits_aa_cfm_rac: collectionPreview.deposits_aa_cfm_rac,
+      deposits_orders: collectionPreview.deposits_orders,
+      source_position: collectionPreview.position,
+    })
+    await loadAll()
+    const refreshed = await fetchApplicationDetails(token, details.id)
+    setDetails(refreshed)
+    setCollectionPreview(null)
+  }
 
   return (
     <div className="panel-grid">
       <div className="tabs" role="tablist" aria-label="Sekcje aplikacji">
-        <button
-          className={`tab ${activeTab === 'new' ? 'tab--active' : ''}`}
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'new'}
-          onClick={() => setActiveTab('new')}
-        >
-          Nowy wniosek
-        </button>
-        <button
-          className={`tab ${activeTab === 'my' ? 'tab--active' : ''}`}
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'my'}
-          onClick={() => setActiveTab('my')}
-        >
-          Moje wnioski
-        </button>
-        {profile.is_reviewer && (
+        {!profile.is_collection && (
+          <>
+            <button
+              className={`tab ${activeTab === 'new' ? 'tab--active' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'new'}
+              onClick={() => setActiveTab('new')}
+            >
+              Nowy wniosek
+            </button>
+            <button
+              className={`tab ${activeTab === 'my' ? 'tab--active' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'my'}
+              onClick={() => setActiveTab('my')}
+            >
+              Moje wnioski
+            </button>
+          </>
+        )}
+        {profile.is_reviewer && !profile.is_collection && (
           <button
             className={`tab ${activeTab === 'verify' ? 'tab--active' : ''}`}
             type="button"
@@ -192,9 +238,12 @@ function ApplicationsPanel({ token, activeTab, setActiveTab, formType, setFormTy
             Weryfikacja
           </button>
         )}
+        {profile.is_collection && (
+          <button className={`tab ${activeTab === 'collection' ? 'tab--active' : ''}`} type="button" role="tab" aria-selected={activeTab === 'collection'} onClick={() => setActiveTab('collection')}>Windykacja</button>
+        )}
       </div>
 
-      {activeTab === 'new' && (
+      {activeTab === 'new' && !profile.is_collection && (
         <>
           <div className="type-switcher">
             <button className={`btn ${formType === 'company' ? 'btn--primary' : 'btn--ghost'}`} onClick={() => setFormType('company')} type="button">Spółka</button>
@@ -205,20 +254,42 @@ function ApplicationsPanel({ token, activeTab, setActiveTab, formType, setFormTy
       )}
 
       {activeTab === 'my' && (
-        <ApplicationsTable title="Moje wnioski" items={myItems} onOpen={(id) => fetchApplicationDetails(token, id).then(setDetails)} />
+        <ApplicationsTable title="Moje wnioski" items={myItems} onOpen={openDetails} />
       )}
 
       {activeTab === 'verify' && profile.is_reviewer && (
-        <ApplicationsTable title="Wszystkie wnioski" items={allItems} onOpen={(id) => fetchApplicationDetails(token, id).then(setDetails)} />
+        <ApplicationsTable title="Wszystkie wnioski" items={allItems} onOpen={openDetails} />
+      )}
+
+      {activeTab === 'collection' && profile.is_collection && (
+        <ApplicationsTable title="Wszystkie wnioski" items={allItems} onOpen={openDetails} />
       )}
 
       {details && (
         <div className="details-card">
           <h3>Szczegóły wniosku #{details.id}</h3>
           <p>Status: <strong>{details.status}</strong></p>
+          <p>Decyzja windykacji: <strong>{details.collection_decision || '-'}</strong></p>
           <p>Użytkownik: {details.submitted_by}</p>
           <p>Typ: {details.applicant_type}</p>
           <p>Liczba pojazdów: {details.total_vehicle_count}</p>
+          {activeTab === 'collection' && profile.is_collection && collectionPreview && (
+            <div>
+              <p>Średnia Dni Po Terminie Płatności: <strong>{Number(collectionPreview.avg_days_past_due || 0).toFixed(2)}</strong></p>
+              <p>Depozyty AA/CFM/RAC: <strong>{Number(collectionPreview.deposits_aa_cfm_rac || 0).toFixed(2)}</strong></p>
+              <p>Depozyty Orders (status=2): <strong>{Number(collectionPreview.deposits_orders || 0).toFixed(2)}</strong></p>
+              <label>Decyzja Windykacji
+                <select value={collectionDecision} onChange={(e) => setCollectionDecision(e.target.value)}>
+                  <option value="pozytywna">pozytywna</option>
+                  <option value="negatywna">negatywna</option>
+                </select>
+              </label>
+              <label>Komentarz
+                <input value={collectionComment} onChange={(e) => setCollectionComment(e.target.value)} />
+              </label>
+              <button className="btn btn--primary" type="button" onClick={submitCollectionDecision}>Zapisz decyzję</button>
+            </div>
+          )}
           <button className="btn btn--ghost" type="button" onClick={() => setDetails(null)}>Zamknij</button>
         </div>
       )}
@@ -237,6 +308,7 @@ function ApplicationsTable({ title, items, onOpen }) {
             <th>Data</th>
             <th>Status</th>
             <th>Wnioskodawca</th>
+            <th>Decyzja windykacji</th>
             <th>Akcja</th>
           </tr>
         </thead>
@@ -247,6 +319,7 @@ function ApplicationsTable({ title, items, onOpen }) {
               <td>{new Date(item.created_at).toLocaleString()}</td>
               <td>{item.status}</td>
               <td>{item.company_name || item.customer_name || item.submitted_by}</td>
+              <td>{item.collection_decision === 'pozytywna' ? '✅' : item.collection_decision === 'negatywna' ? '❌' : '-'}</td>
               <td><button className="btn btn--ghost btn--small" type="button" onClick={() => onOpen(item.id)}>Szczegóły</button></td>
             </tr>
           ))}

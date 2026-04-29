@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.applications import router as applications_router
 from app.core.config import settings
-from app.db.session import Base, engine, ensure_schema, ensure_status_column
+from app.db.session import Base, engine, ensure_collection_columns, ensure_schema, ensure_status_column
 
 app = FastAPI(title='SCOR API', version='0.1.0')
 
@@ -23,6 +23,7 @@ def startup() -> None:
         Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     ensure_status_column()
+    ensure_collection_columns()
 
 
 @app.get('/health')

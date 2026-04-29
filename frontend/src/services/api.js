@@ -46,6 +46,24 @@ export async function fetchAllApplications(token) {
   return response.data?.items || []
 }
 
+export async function fetchCollectionPreview(token, applicationId) {
+  const response = await axios.get(`${env.apiBaseUrl}/applications/${applicationId}/collection-preview`, {
+    headers: authHeader(token)
+  })
+  return response.data
+}
+
+export async function saveCollectionDecision(token, applicationId, payload) {
+  const formData = new FormData()
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) formData.append(key, value)
+  })
+  const response = await axios.post(`${env.apiBaseUrl}/applications/${applicationId}/collection-decision`, formData, {
+    headers: authHeader(token)
+  })
+  return response.data
+}
+
 export async function fetchApplicationDetails(token, applicationId) {
   const response = await axios.get(`${env.apiBaseUrl}/applications/${applicationId}`, {
     headers: authHeader(token)

@@ -10,12 +10,15 @@ from app.db.session import get_db
 from app.models.application import (
     ApplicantType,
     Application,
+    ApplicationCollectionSnapshot,
+    CollectionDecision,
     ApplicationStatus,
     ApplicationVehicleItem,
 )
 from app.schemas.application import CompanyFormCreate, IndividualFormCreate
 from app.services.auth import bearer_scheme, validate_entra_token
 from app.services.car_groups import CarGroupsService
+from app.services.collection import CollectionService
 from app.services.sharepoint import SharePointService
 
 router = APIRouter(prefix='/applications', tags=['applications'])
@@ -65,6 +68,12 @@ def _is_reviewer(payload: dict) -> bool:
     return settings.reception_group_id in payload.get('groups', [])
 
 
+def _is_collection(payload: dict) -> bool:
+    if not settings.windykacja_group_id:
+        return False
+    return settings.windykacja_group_id in payload.get('groups', [])
+
+
 def _user_id(payload: dict) -> str:
     return payload.get('preferred_username') or payload.get('upn') or payload.get('sub', 'unknown')
 
@@ -83,6 +92,7 @@ def _serialize_application(app: Application) -> dict:
         'total_vehicle_value': app.total_vehicle_value,
         'total_initial_fee': app.total_initial_fee,
         'total_vehicle_count': app.total_vehicle_count,
+        'collection_decision': app.collection_decision.value if app.collection_decision else None,
     }
 
 
@@ -154,7 +164,7 @@ async def create_individual_application(
 @router.get('/me')
 def me(credentials=Depends(bearer_scheme)):
     payload = validate_entra_token(credentials)
-    return {'user': _user_id(payload), 'is_reviewer': _is_reviewer(payload)}
+    return {'user': _user_id(payload), 'is_reviewer': _is_reviewer(payload), 'is_collection': _is_collection(payload)}
 
 
 @router.get('/my')
@@ -168,7 +178,7 @@ def my_applications(credentials=Depends(bearer_scheme), db: Session = Depends(ge
 @router.get('/all')
 def all_applications(credentials=Depends(bearer_scheme), db: Session = Depends(get_db)):
     payload = validate_entra_token(credentials)
-    if not _is_reviewer(payload):
+    if not _is_reviewer(payload) and not _is_collection(payload):
         raise HTTPException(status_code=403, detail='Brak uprawnień do listy wszystkich wniosków')
 
     records = db.query(Application).order_by(desc(Application.created_at)).all()
@@ -209,17 +219,19 @@ def application_details(application_id: int, credentials=Depends(bearer_scheme),
     payload = validate_entra_token(credentials)
     user = _user_id(payload)
     reviewer = _is_reviewer(payload)
+    collection = _is_collection(payload)
 
     record = db.query(Application).filter(Application.id == application_id).first()
     if not record:
         raise HTTPException(status_code=404, detail='Wniosek nie istnieje')
 
-    if not reviewer and record.submitted_by != user:
+    if not reviewer and not collection and record.submitted_by != user:
         raise HTTPException(status_code=403, detail='Brak dostępu do szczegółów tego wniosku')
 
     vehicle_rows = db.query(ApplicationVehicleItem).filter(ApplicationVehicleItem.application_id == record.id).all()
 
     details = _serialize_application(record)
+    details['collection_comment'] = record.collection_comment
     details['vehicles'] = [
         {
             'id': item.id,
@@ -237,6 +249,53 @@ def application_details(application_id: int, credentials=Depends(bearer_scheme),
         for item in vehicle_rows
     ]
     return details
+
+
+@router.get('/{application_id}/collection-preview')
+def application_collection_preview(application_id: int, credentials=Depends(bearer_scheme), db: Session = Depends(get_db)):
+    payload = validate_entra_token(credentials)
+    if not _is_collection(payload):
+        raise HTTPException(status_code=403, detail='Brak uprawnień windykacji')
+    record = db.query(Application).filter(Application.id == application_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail='Wniosek nie istnieje')
+    return CollectionService().compute(record.nip)
+
+
+@router.post('/{application_id}/collection-decision')
+def save_collection_decision(
+    application_id: int,
+    decision: str = Form(...),
+    comment: str = Form(default=''),
+    avg_days_past_due: float | None = Form(default=None),
+    deposits_aa_cfm_rac: float | None = Form(default=None),
+    deposits_orders: float | None = Form(default=None),
+    source_position: str | None = Form(default=None),
+    credentials=Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+):
+    payload = validate_entra_token(credentials)
+    if not _is_collection(payload):
+        raise HTTPException(status_code=403, detail='Brak uprawnień windykacji')
+    record = db.query(Application).filter(Application.id == application_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail='Wniosek nie istnieje')
+    if decision not in {CollectionDecision.positive.value, CollectionDecision.negative.value}:
+        raise HTTPException(status_code=422, detail='Nieprawidłowa decyzja windykacji')
+
+    snapshot = ApplicationCollectionSnapshot(
+        application_id=record.id,
+        avg_days_past_due=avg_days_past_due,
+        deposits_aa_cfm_rac=deposits_aa_cfm_rac,
+        deposits_orders=deposits_orders,
+        source_position=source_position,
+    )
+    db.add(snapshot)
+    record.collection_decision = CollectionDecision(decision)
+    record.collection_comment = comment or None
+    record.status = ApplicationStatus.after_collection
+    db.commit()
+    return {'ok': True, 'status': record.status.value, 'collection_decision': record.collection_decision.value}
 
 
 @router.get('/health-auth')

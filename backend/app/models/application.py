@@ -19,6 +19,12 @@ class ApplicationStatus(str, enum.Enum):
     negative = 'negatywny'
     positive = 'pozytywny'
     manual_verification = 'weryfikacja manualna'
+    after_collection = 'po windykacji'
+
+
+class CollectionDecision(str, enum.Enum):
+    positive = 'pozytywna'
+    negative = 'negatywna'
 
 
 class Application(Base):
@@ -53,9 +59,22 @@ class Application(Base):
 
     submitted_by: Mapped[str] = mapped_column(String(255), nullable=False)
     sharepoint_folder: Mapped[str | None] = mapped_column(Text, nullable=True)
+    collection_decision: Mapped[CollectionDecision | None] = mapped_column(
+        Enum(
+            CollectionDecision,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            native_enum=False,
+            name='collection_decision',
+        ),
+        nullable=True,
+    )
+    collection_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
     vehicle_items: Mapped[list['ApplicationVehicleItem']] = relationship(
+        back_populates='application', cascade='all, delete-orphan'
+    )
+    collection_snapshots: Mapped[list['ApplicationCollectionSnapshot']] = relationship(
         back_populates='application', cascade='all, delete-orphan'
     )
 
@@ -81,3 +100,20 @@ class ApplicationVehicleItem(Base):
     rental_period_months: Mapped[int] = mapped_column(Integer, nullable=False)
 
     application: Mapped[Application] = relationship(back_populates='vehicle_items')
+
+
+class ApplicationCollectionSnapshot(Base):
+    __tablename__ = 'wnioski_windykacja_snapshot'
+    __table_args__ = {'schema': settings.db_schema}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey(f'{settings.db_schema}.wnioski.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    avg_days_past_due: Mapped[float | None] = mapped_column(Float, nullable=True)
+    deposits_aa_cfm_rac: Mapped[float | None] = mapped_column(Float, nullable=True)
+    deposits_orders: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source_position: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    application: Mapped[Application] = relationship(back_populates='collection_snapshots')

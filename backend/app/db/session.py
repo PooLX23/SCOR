@@ -34,3 +34,9 @@ def ensure_status_column() -> None:
             ALTER TABLE {settings.db_schema}.wnioski
             ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'nowy'
         """))
+
+
+def ensure_collection_columns() -> None:
+    with engine.begin() as conn:
+        conn.execute(text(f"ALTER TABLE {settings.db_schema}.wnioski ADD COLUMN IF NOT EXISTS collection_decision VARCHAR(50)"))
+        conn.execute(text(f"ALTER TABLE {settings.db_schema}.wnioski ADD COLUMN IF NOT EXISTS collection_comment TEXT"))
