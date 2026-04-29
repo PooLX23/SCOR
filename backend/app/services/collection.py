@@ -48,6 +48,7 @@ class CollectionService:
                 SELECT TOP 1 pozycja, nip
                 FROM [FK_EURORENT].[FK].[fk_kontrahenci_tmp]
                 WHERE RIGHT(REPLACE(REPLACE(REPLACE(UPPER(nip), 'PL', ''), '-', ''), ' ', ''), 10) = :nip
+                  AND aktywny = 1
                 """
             ),
             {'nip': normalized},
