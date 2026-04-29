@@ -16,9 +16,12 @@ class CarGroupsService:
     def _run_query(self, query, params: dict | None = None) -> list:
         if not self.enabled or self.engine is None:
             return []
+        effective_params = params or {}
+        if settings.log_external_sql:
+            logger.info('External SQL [car-groups]: %s | params=%s', str(query), effective_params)
         try:
             with self.engine.connect() as conn:
-                return conn.execute(query, params or {}).all()
+                return conn.execute(query, effective_params).all()
         except SQLAlchemyError as exc:
             logger.exception('MSSQL dictionary lookup failed; returning empty data. Error: %s', exc)
             return []

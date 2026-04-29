@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     mssql_car_groups_url: str | None = None
     mssql_symfonia_url: str | None = None
+    log_external_sql: bool = False
 
 
 settings = Settings()

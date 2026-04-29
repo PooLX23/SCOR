@@ -26,6 +26,8 @@ class CollectionService:
     def _query_one(self, engine, query, params: dict) -> dict | None:
         if engine is None:
             return None
+        if settings.log_external_sql:
+            logger.info('External SQL [collection]: %s | params=%s', str(query), params)
         try:
             with engine.connect() as conn:
                 row = conn.execute(query, params).mappings().first()
