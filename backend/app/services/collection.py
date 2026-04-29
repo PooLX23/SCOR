@@ -76,7 +76,7 @@ class CollectionService:
                 """
                 SELECT SUM(CAST(DoRozliczeniaPLN AS FLOAT)) AS deposits
                 FROM [Eurorent].[dbo].[vSymfoniaZestawienieRozrachunkowKaucje]
-                WHERE NrKontrahentaFK = :position
+                WHERE NrKontrahntaFK = :position
                   AND Stan = 'Depozyt wpłacony'
                 """
             ),
