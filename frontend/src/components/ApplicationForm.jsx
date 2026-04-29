@@ -1,0 +1,367 @@
+import { useEffect, useMemo, useState } from 'react'
+import { fetchBrandForModel, fetchCarBrands, fetchCarGroups, fetchCarModels, submitApplication } from '../services/api'
+
+const vehicleDefaults = {
+  business_line: 'ST',
+  car_make: '',
+  car_model: '',
+  rent_amount: '',
+  deposit_amount: '',
+  deposit_missing: false,
+  vehicle_value: '',
+  initial_fee: '',
+  initial_fee_missing: false,
+  car_group: '',
+  car_class: 'standard',
+  rental_period_months: ''
+}
+
+const createVehicle = () => ({ ...vehicleDefaults })
+const createMain = (type) => (type === 'company' ? { company_name: '', nip: '', krs: '' } : { customer_name: '', pesel: '', nip: '', document_number: '' })
+
+
+const sanitizeMoney = (value) => {
+  const normalized = value.replace(',', '.')
+  const cleaned = normalized.replace(/[^0-9.]/g, '')
+  const [intPart, ...decimals] = cleaned.split('.')
+  return decimals.length ? `${intPart}.${decimals.join('')}` : intPart
+}
+
+const sanitizeInteger = (value) => value.replace(/\D/g, '')
+
+export default function ApplicationForm({ type, token }) {
+  const [main, setMain] = useState(createMain(type))
+  const [vehicles, setVehicles] = useState([createVehicle()])
+  const [files, setFiles] = useState([])
+  const [fileInputKey, setFileInputKey] = useState(0)
+  const [status, setStatus] = useState('')
+  const [carGroupOptions, setCarGroupOptions] = useState([])
+  const [brandOptionsByRow, setBrandOptionsByRow] = useState({})
+  const [modelOptionsByRow, setModelOptionsByRow] = useState({})
+
+  const resetForm = () => {
+    setMain(createMain(type))
+    setVehicles([createVehicle()])
+    setFiles([])
+    setFileInputKey((prev) => prev + 1)
+    setBrandOptionsByRow({})
+    setModelOptionsByRow({})
+  }
+
+  useEffect(() => {
+    resetForm()
+    setStatus('')
+  }, [type])
+
+  useEffect(() => {
+    fetchCarGroups(token)
+      .then((items) => setCarGroupOptions(items))
+      .catch(() => setCarGroupOptions([]))
+  }, [token])
+
+  const totals = useMemo(() => {
+    const numeric = (v) => Number(v || 0)
+    return {
+      rent: vehicles.reduce((sum, row) => sum + numeric(row.rent_amount), 0),
+      deposit: vehicles.reduce((sum, row) => sum + numeric(row.deposit_missing ? 0 : row.deposit_amount), 0),
+      value: vehicles.reduce((sum, row) => sum + numeric(row.vehicle_value), 0),
+      initial: vehicles.reduce((sum, row) => sum + numeric(row.initial_fee_missing ? 0 : row.initial_fee), 0)
+    }
+  }, [vehicles])
+
+  const onMainChange = (e) => setMain((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+
+  const onVehicleChange = (index, name, value) => {
+    setVehicles((prev) => prev.map((row, idx) => (idx === index ? { ...row, [name]: value } : row)))
+  }
+
+  const onMoneyChange = (index, name, value) => {
+    const sanitized = sanitizeMoney(value)
+    setVehicles((prev) => prev.map((row, idx) => {
+      if (idx !== index) return row
+      const next = { ...row, [name]: sanitized }
+      if (name === 'vehicle_value') {
+        next.car_class = Number(sanitized || 0) >= 200000 ? 'premium' : 'standard'
+      }
+      return next
+    }))
+  }
+
+  const onIntegerChange = (index, name, value) => {
+    onVehicleChange(index, name, sanitizeInteger(value))
+  }
+
+
+  const onCarMakeInput = async (index, value) => {
+    onVehicleChange(index, 'car_make', value)
+    try {
+      const brands = await fetchCarBrands(token, value)
+      setBrandOptionsByRow((prev) => ({ ...prev, [index]: brands }))
+
+      const modelsForBrand = await fetchCarModels(token, vehicles[index]?.car_model || '', value)
+      setModelOptionsByRow((prev) => ({ ...prev, [index]: modelsForBrand }))
+    } catch {
+      setBrandOptionsByRow((prev) => ({ ...prev, [index]: [] }))
+      setModelOptionsByRow((prev) => ({ ...prev, [index]: [] }))
+    }
+  }
+
+  const onCarModelInput = async (index, value) => {
+    onVehicleChange(index, 'car_model', value)
+    const currentBrand = vehicles[index]?.car_make || ''
+    try {
+      const models = await fetchCarModels(token, value, currentBrand)
+      setModelOptionsByRow((prev) => ({ ...prev, [index]: models }))
+
+      if (!currentBrand && value.length >= 2) {
+        const detectedBrand = await fetchBrandForModel(token, value)
+        if (detectedBrand) {
+          onVehicleChange(index, 'car_make', detectedBrand)
+          const brands = await fetchCarBrands(token, detectedBrand)
+          setBrandOptionsByRow((prev) => ({ ...prev, [index]: brands }))
+
+          const scopedModels = await fetchCarModels(token, value, detectedBrand)
+          setModelOptionsByRow((prev) => ({ ...prev, [index]: scopedModels }))
+        }
+      }
+    } catch {
+      setModelOptionsByRow((prev) => ({ ...prev, [index]: [] }))
+    }
+  }
+
+  const onDepositMissingChange = (index, checked) => {
+    setVehicles((prev) => prev.map((row, idx) => (idx === index ? { ...row, deposit_missing: checked, deposit_amount: checked ? '0' : '' } : row)))
+  }
+
+  const onInitialFeeMissingChange = (index, checked) => {
+    setVehicles((prev) => prev.map((row, idx) => (idx === index ? { ...row, initial_fee_missing: checked, initial_fee: checked ? '0' : '' } : row)))
+  }
+
+  const addVehicle = () => setVehicles((prev) => [...prev, createVehicle()])
+  const removeVehicle = (index) => setVehicles((prev) => prev.filter((_, idx) => idx !== index))
+
+  const onSubmit = async (e) => {
+    e.preventDefault()
+    setStatus('Wysyłanie...')
+    try {
+      const payload = {
+        ...main,
+        vehicles: vehicles.map((row) => ({
+          ...row,
+          deposit_amount: Number(row.deposit_missing ? 0 : row.deposit_amount),
+          rent_amount: Number(row.rent_amount),
+          vehicle_value: Number(row.vehicle_value),
+          initial_fee: Number(row.initial_fee_missing ? 0 : row.initial_fee),
+          rental_period_months: Number(row.rental_period_months)
+        })).map(({ deposit_missing, initial_fee_missing, ...apiRow }) => apiRow)
+      }
+
+      const result = await submitApplication({ token, type, data: payload, files })
+      setStatus(`Wysłano. ID: ${result.id}`)
+      resetForm()
+    } catch (error) {
+      setStatus(`Błąd: ${formatErrorMessage(error)}`)
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="application-form">
+      <h2>{type === 'company' ? 'Sekcja 1: Dane spółki i załączniki' : 'Sekcja 1: Dane klienta i załączniki'}</h2>
+
+      <div className="form-grid">
+        {type === 'company' ? (
+          <>
+            <Field name="company_name" label="Nazwa spółki" value={main.company_name} onChange={onMainChange} />
+            <Field name="nip" label="NIP" value={main.nip} minLength={10} maxLength={20} onChange={onMainChange} />
+            <Field name="krs" label="KRS" value={main.krs} onChange={onMainChange} />
+          </>
+        ) : (
+          <>
+            <Field name="customer_name" label="Nazwa klienta" value={main.customer_name} onChange={onMainChange} />
+            <Field name="pesel" label="PESEL" value={main.pesel} minLength={11} maxLength={11} onChange={onMainChange} />
+            <Field name="nip" label="NIP" value={main.nip} minLength={10} maxLength={20} onChange={onMainChange} />
+            <Field name="document_number" label="Numer dokumentu" value={main.document_number} onChange={onMainChange} />
+          </>
+        )}
+      </div>
+
+      <label className="file-input">
+        Załączniki
+        <input key={fileInputKey} required type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+      </label>
+
+      <div className="section-divider" />
+      <h2>Sekcja 2: Pojazdy</h2>
+
+      {vehicles.map((vehicle, index) => (
+        <div className="vehicle-card" key={`vehicle-${index}`}>
+          <div className="vehicle-header">
+            <strong>Pojazd #{index + 1}</strong>
+            {vehicles.length > 1 && (
+              <button type="button" className="btn btn--ghost btn--small" onClick={() => removeVehicle(index)}>
+                Usuń
+              </button>
+            )}
+          </div>
+
+          <div className="form-grid">
+            <label>
+              Linia biznesowa
+              <select required value={vehicle.business_line} onChange={(e) => onVehicleChange(index, 'business_line', e.target.value)}>
+                {['ST', 'LT', 'AA', 'CFM', 'LOP'].map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Marka
+              <input
+                required
+                value={vehicle.car_make}
+                onChange={(e) => onCarMakeInput(index, e.target.value)}
+                list={`brand-options-${index}`}
+              />
+              <datalist id={`brand-options-${index}`}>
+                {(brandOptionsByRow[index] || []).map((brand) => (
+                  <option key={brand} value={brand} />
+                ))}
+              </datalist>
+            </label>
+            <label>
+              Model
+              <input
+                required
+                value={vehicle.car_model}
+                onChange={(e) => onCarModelInput(index, e.target.value)}
+                list={`model-options-${index}`}
+              />
+              <datalist id={`model-options-${index}`}>
+                {(modelOptionsByRow[index] || []).map((model) => (
+                  <option key={model} value={model} />
+                ))}
+              </datalist>
+            </label>
+            <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Wysokość czynszu" value={vehicle.rent_amount} onChange={(e) => onMoneyChange(index, 'rent_amount', e.target.value)} />
+
+            <label>
+              Kwota depozytu
+              <input
+                required
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.]?[0-9]*"
+                disabled={vehicle.deposit_missing}
+                value={vehicle.deposit_missing ? '0' : vehicle.deposit_amount}
+                onChange={(e) => onMoneyChange(index, 'deposit_amount', e.target.value)}
+              />
+              <span className="checkbox-inline">
+                <input
+                  type="checkbox"
+                  checked={vehicle.deposit_missing}
+                  onChange={(e) => onDepositMissingChange(index, e.target.checked)}
+                /> BRAK
+              </span>
+            </label>
+
+            <Field type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" label="Wartość pojazdu" value={vehicle.vehicle_value} onChange={(e) => onMoneyChange(index, 'vehicle_value', e.target.value)} />
+            <label>
+              Opłata wstępna
+              <input
+                required
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.]?[0-9]*"
+                disabled={vehicle.initial_fee_missing}
+                value={vehicle.initial_fee_missing ? '0' : vehicle.initial_fee}
+                onChange={(e) => onMoneyChange(index, 'initial_fee', e.target.value)}
+              />
+              <span className="checkbox-inline">
+                <input
+                  type="checkbox"
+                  checked={vehicle.initial_fee_missing}
+                  onChange={(e) => onInitialFeeMissingChange(index, e.target.checked)}
+                /> BRAK
+              </span>
+            </label>
+            <label>
+              Grupa samochodu
+              <select
+                required
+                value={vehicle.car_group}
+                onChange={(e) => onVehicleChange(index, 'car_group', e.target.value)}
+              >
+                <option value="" disabled>Wybierz grupę</option>
+                {carGroupOptions.map((group) => (
+                  <option key={group} value={group}>{group}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Klasa samochodu
+              <select required value={vehicle.car_class} onChange={(e) => onVehicleChange(index, 'car_class', e.target.value)}>
+                <option value="standard">standard</option>
+                <option value="premium">premium</option>
+              </select>
+            </label>
+
+            <Field type="text" inputMode="numeric" pattern="[0-9]*" label="Okres wynajmu (miesiące)" value={vehicle.rental_period_months} onChange={(e) => onIntegerChange(index, 'rental_period_months', e.target.value)} />
+          </div>
+        </div>
+      ))}
+
+      <button type="button" className="btn btn--ghost" onClick={addVehicle}>+ Dodaj pojazd</button>
+
+      <div className="totals-grid">
+        <ReadOnlyField label="Suma czynszu" value={totals.rent.toFixed(2)} />
+        <ReadOnlyField label="Suma depozytu" value={totals.deposit.toFixed(2)} />
+        <ReadOnlyField label="Suma wartości pojazdów" value={totals.value.toFixed(2)} />
+        <ReadOnlyField label="Suma opłat wstępnych" value={totals.initial.toFixed(2)} />
+      </div>
+
+      <button className="btn btn--primary" type="submit">Zapisz wniosek</button>
+      {status && <p className="status">{status}</p>}
+    </form>
+  )
+}
+
+function Field({ name, label, type = 'text', step, value, onChange, ...rest }) {
+  return (
+    <label>
+      {label}
+      <input required name={name} type={type} step={step} value={value} onChange={onChange} {...rest} />
+    </label>
+  )
+}
+
+function ReadOnlyField({ label, value }) {
+  return (
+    <label>
+      {label}
+      <input value={value} readOnly />
+    </label>
+  )
+}
+
+
+function formatErrorMessage(error) {
+  const detail = error?.response?.data?.detail
+  if (!detail) return error?.message || 'Nieznany błąd'
+
+  if (typeof detail === 'string') return detail
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (item?.msg) return `${item.msg}${item?.loc ? ` (${item.loc.join('.')})` : ''}`
+        return JSON.stringify(item)
+      })
+      .join('; ')
+  }
+
+  if (typeof detail === 'object') return JSON.stringify(detail)
+
+  return String(detail)
+}
