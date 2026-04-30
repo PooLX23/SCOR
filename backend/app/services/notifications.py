@@ -49,12 +49,19 @@ class NotificationService:
                 'body': {'contentType': 'HTML', 'content': html},
                 'toRecipients': [{'emailAddress': {'address': settings.windykacja_group_id}}],
             },
-            'saveToSentItems': 'false',
+            'saveToSentItems': False,
         }
         try:
             token = self._token()
             url = f'https://graph.microsoft.com/v1.0/users/{settings.graph_mail_sender_user}/sendMail'
             response = httpx.post(url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=20)
             response.raise_for_status()
+            logger.info('New application email sent successfully to %s.', settings.windykacja_group_id)
+        except httpx.HTTPStatusError as exc:
+            logger.exception(
+                'Sending new application email failed: %s | response=%s',
+                exc,
+                exc.response.text,
+            )
         except Exception as exc:  # noqa: BLE001
             logger.exception('Sending new application email failed: %s', exc)
