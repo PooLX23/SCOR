@@ -19,6 +19,7 @@ from app.schemas.application import CompanyFormCreate, IndividualFormCreate
 from app.services.auth import bearer_scheme, validate_entra_token
 from app.services.car_groups import CarGroupsService
 from app.services.collection import CollectionService
+from app.services.notifications import NotificationService
 from app.services.sharepoint import SharePointService
 
 router = APIRouter(prefix='/applications', tags=['applications'])
@@ -124,6 +125,11 @@ async def create_company_application(
     folder = await SharePointService().upload_files(application.id, files)
     application.sharepoint_folder = folder
     db.commit()
+    NotificationService().notify_new_application(
+        application_id=application.id,
+        applicant_label=application.company_name or '-',
+        submitted_by=application.submitted_by,
+    )
 
     return {'id': application.id, 'sharepoint_folder': folder, 'status': application.status.value, **totals}
 
@@ -157,6 +163,11 @@ async def create_individual_application(
     folder = await SharePointService().upload_files(application.id, files)
     application.sharepoint_folder = folder
     db.commit()
+    NotificationService().notify_new_application(
+        application_id=application.id,
+        applicant_label=application.customer_name or '-',
+        submitted_by=application.submitted_by,
+    )
 
     return {'id': application.id, 'sharepoint_folder': folder, 'status': application.status.value, **totals}
 

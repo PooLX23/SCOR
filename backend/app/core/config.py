@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     graph_client_id: str | None = None
     graph_client_secret: str | None = None
+    graph_mail_sender_user: str | None = None
     sharepoint_site_id: str | None = None
     sharepoint_drive_id: str | None = None
     sharepoint_root_folder: str = 'scor-wnioski'
